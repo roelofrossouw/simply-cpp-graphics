@@ -103,6 +103,7 @@ namespace sc {
         for (const auto &child: children) {
             delete child;
         }
+        delete clip_path; // its own clone (fetch_clip_path); copies don't share it
     }
 
     color svg_element::get_fill() const {
@@ -983,6 +984,7 @@ namespace sc {
     void svg_element::fetch_clip_path(const std::string &name) {
         auto element = reinterpret_cast<svg_header *>(svg)->get_named_element(name);
         if (!element) return; // Named element not found :(
+        delete clip_path;
         clip_path = element->clone();
     }
 
