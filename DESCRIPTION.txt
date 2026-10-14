@@ -1,0 +1,1 @@
+C++20 drawing interface: canvas, text and fonts, paths and SVG, for image and PDF engines
