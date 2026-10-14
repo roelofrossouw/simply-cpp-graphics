@@ -91,7 +91,14 @@ namespace sc {
         root = other.root;
         transform = other.transform;
         for (auto p: other.points) points.push_back(p);
-        for (auto c: other.children) add_child(c->clone(), false);
+        for (auto c: other.children) {
+            // add_child() starts a new child where the last one ended, as parsing needs; a copy
+            // keeps its own points (a circle's centre, say).
+            auto *copy = c->clone();
+            const auto own_points = copy->points;
+            add_child(copy, false);
+            copy->points = own_points;
+        }
     }
 
     svg_element::svg_element(const svg_element &other, svg_element *parent) : svg_element(other) {
