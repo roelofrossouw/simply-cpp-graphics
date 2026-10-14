@@ -47,6 +47,21 @@ int main() {
         CHECK_NEAR(box.top(), 5.0, 1e-9);
     }
 
+    SECTION("Clip paths");
+    {
+        const sc::svg disc{R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">)svg"
+                           R"svg(<defs><clipPath id="round"><circle cx="50" cy="50" r="45"/></clipPath></defs>)svg"
+                           R"svg(<rect clip-path="url(#round)" width="100" height="50" fill="#e9c46a"/></svg>)svg"};
+        const auto &clip = disc.elements().at(0).clip;
+        CHECK(clip.has_value());
+        if (clip) {
+            const auto box = clip->bounds();
+            CHECK_NEAR(box.left(), 5.0, 1.0); // the circle where it was drawn, not at the origin
+            CHECK_NEAR(box.top(), 5.0, 1.0);
+            CHECK_NEAR(box.width(), 90.0, 1.0);
+        }
+    }
+
     SECTION("Files and mistakes");
     {
         const auto file = std::filesystem::temp_directory_path() / "sc-graphics-test.svg";
