@@ -1,0 +1,77 @@
+// sc::canvas is the drawing interface sc-image (OpenCV) and sc-pdf (PDFHummus) implement. This demo
+// is a canvas of its own that only prints what it's asked to paint, to show what reaches an engine:
+// every shape, text and SVG drawing comes down to a few primitives.
+
+#include <iostream>
+#include <string>
+
+#include <sc.h>
+
+#include <canvas.h>
+
+namespace {
+    // [readme]
+    // A canvas implements the primitives; canvas::draw() does the rest.
+    class printing_canvas : public sc::canvas {
+    protected:
+        void paint_polygon(const sc::polygon &shape, const sc::color &stroke, const sc::color &fill, double width) override {
+            print("polygon of " + std::to_string(shape.size()) + " points", stroke, fill, width);
+        }
+
+        void paint_circle(const sc::circle &shape, const sc::color &stroke, const sc::color &fill, double width) override {
+            print("circle, radius " + sc::console::format(shape.radius()), stroke, fill, width);
+        }
+
+        void paint_line(const sc::point &from, const sc::point &to, const sc::color &colour, double width) override {
+            print("line " + sc::console::format(from) + " to " + sc::console::format(to), colour, sc::color::Transparent, width);
+        }
+
+        void paint_text(const sc::text &sample, const sc::color &colour) override {
+            sc::console::note("text \"" + sample.content + "\" in " + sample.font.family + " " + sc::console::format(sample.font.size) +
+                              ", " + sc::console::format(colour));
+        }
+
+        double measure_width(const sc::text &sample) override { return sample.content.size() * sample.font.size / 2; }
+        double measure_x_height(const sc::font &font) override { return font.size / 2; }
+        double measure_cap_height(const sc::font &font) override { return font.size * 0.7; }
+
+    private:
+        static void print(const std::string &what, const sc::color &stroke, const sc::color &fill, const double width) {
+            std::string how;
+            if (width > 0) how += " outlined " + sc::console::format(stroke) + ", " + sc::console::format(width) + " wide";
+            if (fill.alpha() > 0) how += " filled " + sc::console::format(fill);
+            sc::console::note(what + how);
+        }
+    };
+    // [/readme]
+}
+
+int main() {
+    try {
+        sc::console::title("simply-cpp graphics: what a canvas is asked to paint");
+        printing_canvas canvas;
+
+        sc::console::heading("Shapes: draw(shape, stroke = black, fill = transparent, width = 1)");
+        SC_STEP(canvas.draw(sc::rect{10, 10, 80, 40}));
+        SC_STEP(canvas.draw(sc::rect{10, 10, 80, 40}, sc::color::Red, sc::color{"gold"}, 2, 6)); // rounded: a polygon of arcs
+        SC_STEP(canvas.draw(sc::circle{{50, 50}, 20}, sc::color::Transparent, sc::color::Blue));
+        SC_STEP(canvas.draw(sc::rotated_rect{{50, 50}, {40, 20}, 30}));
+        SC_STEP(canvas.draw(sc::line{{0, 0}, {100, 0}}, sc::color::Green, 0.5));
+
+        sc::console::heading("Text: sc::text{content, where its baseline starts, sc::font}");
+        const sc::text label{"simply-cpp", {10, 30}, sc::font::bold("serif", 18)};
+        SC_STEP(canvas.draw(label));
+        SC_SHOW(canvas.text_width(label));
+
+        sc::console::heading("SVG: read into paths, scaled to fit and centred");
+        const sc::svg logo{R"(<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200">)"
+                           R"(<rect width="320" height="200" fill="#2a6f97"/>)"
+                           R"(<circle cx="160" cy="100" r="70" fill="#f4d35e"/></svg>)"};
+        SC_SHOW(logo.elements().size());
+        SC_STEP(canvas.draw(logo, sc::rect{0, 0, 160, 160}));
+    } catch (const std::exception &error) {
+        std::cerr << "sc-graphics-demo: " << error.what() << '\n';
+        return 1;
+    }
+    return 0;
+}
