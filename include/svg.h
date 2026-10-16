@@ -1,5 +1,6 @@
 #pragma once
 
+#include "paint.h"
 #include "path.h"
 
 #include <color.h>
@@ -17,13 +18,12 @@ namespace sc {
     /// filters. Draw it with canvas::draw(svg, position).
     class svg {
     public:
-        /// One painted path. A transparent fill or stroke isn't painted; clip, when set, limits
-        /// the paint to inside it.
+        /// One painted path: its stroke and fill (none when the SVG leaves one out); clip, when
+        /// set, limits the paint to inside it.
         struct element {
             path shape;
-            color fill = color::Transparent;
-            color stroke = color::Transparent;
-            double width = 0;
+            sc::stroke stroke = sc::stroke::none();
+            sc::fill fill;
             std::optional<path> clip;
         };
 

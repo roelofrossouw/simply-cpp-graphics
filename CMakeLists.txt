@@ -8,7 +8,7 @@ option(SC_GRAPHICS_BUILD_TESTS "Build simply-cpp-graphics tests" ${PROJECT_IS_TO
 get_sc_version()
 message(STATUS "SimplyCPP ${SC_MODULE} Version: ${SC_VERSION}")
 
-find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.7.0)
+find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.8.0)
 # Through pkg-config: jammy's libtinyxml2-dev has no CMake package. As with sc-redis's hiredis, the
 # library is linked by path so the exported targets don't need pkg-config.
 config_or_install_package(tinyxml2 libtinyxml2-dev tinyxml2)
@@ -30,7 +30,7 @@ endforeach ()
 find_library(SC_GRAPHICS_FONTCONFIG_LIBRARY NAMES fontconfig HINTS ${fontconfig_LIBRARY_DIRS} REQUIRED)
 find_library(SC_GRAPHICS_FREETYPE_LIBRARY NAMES freetype HINTS ${freetype2_LIBRARY_DIRS} REQUIRED)
 
-set(SOURCE_OBJECTS include/font.h include/text.h include/typeface.h)
+set(SOURCE_OBJECTS include/font.h include/text.h include/typeface.h include/paint.h)
 set(SOURCE_LIBRARIES)
 set(SOURCE_LINK_LIBRARIES)
 
@@ -62,4 +62,4 @@ endif ()
 
 add_sc_example(sc-graphics-demo)
 
-package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.7.0~)" libtinyxml2-dev libfontconfig-dev libfreetype-dev)
+package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.8.0~)" libtinyxml2-dev libfontconfig-dev libfreetype-dev)

@@ -47,10 +47,7 @@ namespace sc {
         // Painting: each ends the current path.
         void f() { emit(true, false); }
 
-        void fStar() {
-            current.even_odd = true;
-            emit(true, false);
-        }
+        void fStar() { emit(true, false, fill_rule::even_odd); }
 
         void S() { emit(false, true); }
 
@@ -81,11 +78,11 @@ namespace sc {
         path current;
         bool clip_next = false;
 
-        void emit(const bool filled, const bool stroked) {
+        void emit(const bool filled, const bool stroked, const fill_rule rule = fill_rule::nonzero) {
             const auto &now = states.back();
             if (!current.empty())
-                elements.push_back({current, filled ? now.fill : color::Transparent, stroked ? now.stroke : color::Transparent,
-                                    stroked ? now.width : 0, now.clip});
+                elements.push_back({current, stroked ? sc::stroke{now.stroke, now.width} : sc::stroke::none(),
+                                    filled ? sc::fill{now.fill, rule} : sc::fill::none(), now.clip});
             current = {};
         }
     };
