@@ -365,6 +365,8 @@ namespace sc {
                 now.placed = transform_list(element.Attribute("transform")).then(now.placed);
                 if (const auto v = property(element, "clip-path"); v && *v != "none") {
                     if (const auto found = ids_.find(reference(*v)); found != ids_.end()) now.clip = clip_path(*found->second, now.placed);
+                } else if (const auto mask = property(element, "mask"); mask && *mask != "none") {
+                    if (const auto found = ids_.find(reference(*mask)); found != ids_.end()) now.clip = clip_path(*found->second, now.placed);
                 }
             }
 
@@ -418,16 +420,37 @@ namespace sc {
                 return std::nullopt;
             }
 
-            // A clipPath's shapes, as one path in the drawing's coordinates for an element placed so.
+            // A clipPath's (or mask's) shapes, as one path in the drawing's coordinates for an element
+            // placed so. A mask is taken as a clip of its shapes, their luminance aside: what icon
+            // exports (Sketch's, say) use masks for.
             std::optional<path> clip_path(const tinyxml2::XMLElement &clip, const transform &placed) const {
-                const transform base = transform_list(clip.Attribute("transform")).then(placed);
                 path outline;
-                for (auto *child = clip.FirstChildElement(); child; child = child->NextSiblingElement()) {
-                    if (const auto found = geometry_of(*child, local_name(*child)))
-                        outline.append(to_path(transform_list(child->Attribute("transform")).then(base).apply(*found)));
-                }
+                collect(clip, transform_list(clip.Attribute("transform")).then(placed), outline, 0);
                 if (outline.empty()) return std::nullopt;
                 return outline;
+            }
+
+            // Every shape under parent, through <g> and <use>, into outline.
+            void collect(const tinyxml2::XMLElement &parent, const transform &placed, path &outline, const int depth) const {
+                if (depth > 16) return;
+                for (auto *child = parent.FirstChildElement(); child; child = child->NextSiblingElement()) {
+                    const std::string name = local_name(*child);
+                    const transform own = transform_list(child->Attribute("transform")).then(placed);
+                    if (name == "g") {
+                        collect(*child, own, outline, depth + 1);
+                    } else if (name == "use") {
+                        const auto *href = child->Attribute("href") ? child->Attribute("href") : child->Attribute("xlink:href");
+                        const auto found = href ? ids_.find(reference(href)) : ids_.end();
+                        if (found == ids_.end()) continue;
+                        const transform moved = transform::translate(number(child->Attribute("x")), number(child->Attribute("y"))).then(own);
+                        if (const auto shape = geometry_of(*found->second, local_name(*found->second)))
+                            outline.append(to_path(transform_list(found->second->Attribute("transform")).then(moved).apply(*shape)));
+                        else
+                            collect(*found->second, transform_list(found->second->Attribute("transform")).then(moved), outline, depth + 1);
+                    } else if (const auto shape = geometry_of(*child, name)) {
+                        outline.append(to_path(own.apply(*shape)));
+                    }
+                }
             }
 
             void children(const tinyxml2::XMLElement &parent, const context &now) {

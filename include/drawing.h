@@ -73,8 +73,9 @@ namespace sc {
         /// Reads SVG: paths, the basic shapes (rect, circle, ellipse, line, polyline, polygon), text,
         /// groups, transforms, clip paths, <defs> and <use>, flat colours and opacity, presentation
         /// attributes and style="...". Shapes keep their kind where their transform allows (see
-        /// sc::transform::apply()). The page is the viewBox, moved to the origin, or else the width
-        /// and height. Not read: gradients, patterns, markers, filters, masks, CSS stylesheets.
+        /// sc::transform::apply()). A mask is read as a clip of its shapes (their luminance aside).
+        /// The page is the viewBox, moved to the origin, or else the width and height. Not read:
+        /// gradients (a fallback colour is), patterns, markers, filters, CSS stylesheets.
         /// Throws std::runtime_error when it isn't SVG.
         [[nodiscard]] static drawing from_svg(std::string_view svg);
 

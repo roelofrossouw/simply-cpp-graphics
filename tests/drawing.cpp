@@ -107,6 +107,18 @@ int main() {
         CHECK(near(shape_at(disc, 0).bounds(), 5, 5, 90, 45, 1e-9)); // the rect within the clip
     }
 
+    SECTION("A mask is read as a clip of its shapes, through <use> and groups");
+    {
+        const auto badge = sc::drawing::from_svg(
+            R"svg(<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100" height="40">)svg"
+            R"svg(<defs><rect id="shape" x="10" y="10" width="20" height="20"/></defs>)svg"
+            R"svg(<mask id="m" fill="white"><g transform="translate(5,0)"><use xlink:href="#shape"/></g></mask>)svg"
+            R"svg(<g mask="url(#m)"><rect width="100" height="40" fill="black"/></g></svg>)svg");
+        CHECK_EQ(badge.size(), std::size_t{1});
+        CHECK(shape_at(badge, 0).clip.has_value());
+        CHECK(near(shape_at(badge, 0).bounds(), 15, 10, 20, 20)); // the full rect, within the mask's shape
+    }
+
     SECTION("Text: a label with its font and fill");
     {
         const auto picture = sc::drawing::from_svg(
