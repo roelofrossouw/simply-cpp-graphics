@@ -1,7 +1,8 @@
 #pragma once
 
 #include "paint.h"
-#include "path.h"
+
+#include <path.h>
 
 #include <color.h>
 

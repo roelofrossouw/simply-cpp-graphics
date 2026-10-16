@@ -1,8 +1,8 @@
 # simply-cpp-graphics
 
 C++20 drawing interface for simply-cpp: `sc::canvas`, with `sc::stroke` and
-`sc::fill`, `sc::text` and `sc::font`, `sc::path` (lines and curves) and
-`sc::svg`. It draws nothing
+`sc::fill`, `sc::text` and `sc::font`, and `sc::svg`. It draws sc-core's
+geometry, `sc::path` (lines and curves) included. It draws nothing
 itself: engines implement it, so the same calls draw on any of them.
 
 | Engine | Module | Draws with |
