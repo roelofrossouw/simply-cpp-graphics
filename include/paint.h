@@ -3,9 +3,8 @@
 #include <color.h>
 
 namespace sc {
-    // Transparency is the colour's alpha, for strokes and fills alike: 0 leaves the part out; partly
-    // transparent colours are painted opaque by today's engines (sc-image, sc-pdf, sc-mupdf), and
-    // honouring them is up to each engine.
+    // Transparency is the colour's alpha, for strokes, fills and text alike: 0 leaves the part out.
+    // sc-pdf and sc-mupdf paint partly transparent colours as they are; sc-image paints them opaque.
 
     /// How overlapping parts of a filled path count as inside: nonzero (the default: an area wound
     /// round in the same direction twice is still inside) or even-odd (every crossing of an outline

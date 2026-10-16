@@ -28,7 +28,8 @@ namespace sc {
     /// so draw(box, sc::color::Red) outlines in red and draw(box, sc::stroke::none(), sc::color::Red)
     /// fills. A line has no inside: draw(line, stroke). Text is filled: draw(text, fill), black by
     /// default. Coordinates are the canvas's own (pixels on an image, points on a PDF), from the
-    /// top-left corner with y down. Each shape works in either flavour (rect or rect_i, ...).
+    /// top-left corner with y down. Each shape works in either flavour (rect or rect_i, ...); any
+    /// other sc::geometry draws through its path, and an sc::shape as whichever shape it holds.
     ///
     /// A canvas implements a few primitives (polygon, circle, line, text and, if it can do better
     /// than a polygon, rounded rectangles and paths); the draw() calls turn everything else into
@@ -75,8 +76,8 @@ namespace sc {
         /// A path of lines and curves; open subpaths are only stroked.
         void draw(const path &shape, const sc::stroke &stroke = {}, const sc::fill &fill = {});
 
-        /// Any other geometry (sc::geometry, such as a shape of your own), drawn as its path,
-        /// to_path(shape). sc-core's shapes have the overloads above, so engines draw them natively.
+        /// Any other sc::geometry (a shape of your own: bounds() and to_path()), drawn as its path.
+        /// sc-core's shapes have the overloads above, so engines draw them natively.
         template<geometry G>
         void draw(const G &shape, const sc::stroke &stroke = {}, const sc::fill &fill = {}) {
             draw(to_path(shape), stroke, fill);
@@ -131,8 +132,8 @@ namespace sc {
 
         /// By default the path's curves are cut into straight segments: each closed subpath is
         /// drawn as a polygon (so subpaths fill separately, whatever the fill rule: no holes), open
-        /// ones as lines. A canvas
-        /// with curves, or that can fill several outlines at once, can do better.
+        /// ones as lines. A canvas with curves, or that can fill several outlines at once, can do
+        /// better.
         virtual void paint_path(const path &shape, const sc::stroke &stroke, const sc::fill &fill);
 
         /// Limits what's painted to inside shape (by the nonzero rule; a clip rule is planned) until

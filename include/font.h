@@ -10,13 +10,13 @@
 #include <utility>
 
 namespace sc {
-    /// A font to draw text in: a typeface (family), a style of it and a size, as asked for, for sc::text. family is a name ("DejaVu Sans", "Roboto") or a generic one
-    /// ("sans-serif", "serif", "monospace"); size is the em size, in the canvas's units (points on a
-    /// PDF, pixels on an image); weight is a CSS weight from 100 (thin) to 900 (black), 400 regular
-    /// and 700 bold; style, when set, is a style name ("Condensed Bold") that wins over weight and
-    /// italic where the canvas can use it. A canvas picks the closest font it has.
+    /// A font to draw text in, as asked for: a typeface (family), a style of it and a size. family is
+    /// a name ("DejaVu Sans", "Roboto") or a generic one ("sans-serif", "serif", "monospace"); size is
+    /// the em size, in the canvas's units (points on a PDF, pixels on an image); weight is a CSS
+    /// weight from 100 (thin) to 900 (black), 400 regular and 700 bold; style, when set, is a style
+    /// name ("Condensed Bold") that wins over weight and italic where the canvas can use it.
     ///
-    /// It describes the font asked for; face() finds the installed face closest to it (an
+    /// face() finds the installed face closest to it (an
     /// sc::font_face, whose typeface() is its family), and the measurements are that face at this
     /// size: how sc-pdf and sc-mupdf draw it. Canvases with fonts of their own (sc-image's) measure
     /// with canvas::text_width() instead.

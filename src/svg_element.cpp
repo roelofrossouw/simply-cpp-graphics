@@ -277,13 +277,7 @@ namespace sc {
                 double sx = params.size() > 0 ? params[0] : 1;
                 double sy = params.size() > 1 ? params[1] : sx;
                 scale(sx, sy);
-                // } else if (name.find("skewX") != std::string::npos) {
-                //     skewX(params.size() > 0 ? params[0] : 0);
-                // } else if (name.find("skewY") != std::string::npos) {
-                //     skewY(params.size() > 0 ? params[0] : 0);
-                // } else if (name.find("matrix") != std::string::npos && params.size() == 6) {
-                //     matrix(params[0], params[1], params[2], params[3], params[4], params[5]);
-            }
+            } // skewX, skewY and matrix aren't supported: ignored
         }
     }
 
@@ -578,9 +572,9 @@ namespace sc {
         return ang;
     };
 
+    // The SVG implementation notes' endpoint-to-centre conversion, then cubic curves of at most 90
+    // degrees each.
     void svg_arc::stroke(svg_recorder *ctx) const {
-        // ctx->l(get_end().x, get_end().y);
-
         auto x1 = get_start().x;
         auto y1 = get_start().y;
         auto x2 = get_end().x;
@@ -590,18 +584,17 @@ namespace sc {
         auto angle = x_axis_rotation;
 
 
-        // Convert angle to radians
         double phi = angle * M_PI / 180.0;
         double cosPhi = std::cos(phi);
         double sinPhi = std::sin(phi);
 
-        // Step 1: Compute transformed coordinates
+        // The endpoints' midpoint, in the ellipse's rotated frame.
         double dx = (x1 - x2) / 2.0;
         double dy = (y1 - y2) / 2.0;
         double x1p = cosPhi * dx + sinPhi * dy;
         double y1p = -sinPhi * dx + cosPhi * dy;
 
-        // Correct radii
+        // Radii too small to reach the end are scaled up until they just do.
         double rx2 = rx * rx;
         double ry2 = ry * ry;
         double x1p2 = x1p * x1p;
@@ -615,7 +608,7 @@ namespace sc {
             ry2 = ry * ry;
         }
 
-        // Step 2: Compute center
+        // The centre.
         double sign = (large_arc_flag == sweep_flag) ? -1.0 : 1.0;
         double num = rx2 * ry2 - rx2 * y1p2 - ry2 * x1p2;
         double den = rx2 * y1p2 + ry2 * x1p2;
@@ -632,7 +625,6 @@ namespace sc {
         if (!sweep_flag && deltaTheta > 0) deltaTheta -= 2 * M_PI;
         else if (sweep_flag && deltaTheta < 0) deltaTheta += 2 * M_PI;
 
-        // Step 4: Split arc into segments of max 90°
         int segments = static_cast<int>(std::ceil(std::fabs(deltaTheta / (M_PI / 2.0))));
         double delta = deltaTheta / segments;
 
@@ -640,7 +632,6 @@ namespace sc {
             double t1 = theta1 + i * delta;
             double t2 = t1 + delta;
 
-            // Endpoints
             double cosT1 = std::cos(t1), sinT1 = std::sin(t1);
             double cosT2 = std::cos(t2), sinT2 = std::sin(t2);
 
@@ -653,7 +644,6 @@ namespace sc {
                 cy + rx * sinPhi * cosT2 + ry * cosPhi * sinT2
             };
 
-            // Derivatives
             double alpha = std::tan(delta / 4.0);
             double factor = (8.0 / 5) * alpha / (1 + alpha * alpha);
 
@@ -667,7 +657,6 @@ namespace sc {
             };
 
             ctx->c(P1.first, P1.second, P2.first, P2.second, P3.first, P3.second);
-            //   curves.push_back({P0,P1,P2,P3});
         }
     }
 
@@ -748,14 +737,14 @@ namespace sc {
 
     void svg_circle::scale(double scale_x, double scale_y) {
         svg_element::scale(scale_x, scale_y);
-        radius *= scale_x; // If not round??
+        radius *= scale_x; // stays a circle: a non-uniform scale isn't an ellipse here
     }
 
 
     void svg_circle::stroke(svg_recorder *ctx) const {
         double m = 0.5522847498;
-        double center_x = points[0].x; //  + radius;
-        double center_y = points[0].y; //  + radius;
+        double center_x = points[0].x;
+        double center_y = points[0].y;
         double k = radius * m;
 
         ctx->m(center_x, center_y + radius);
@@ -990,7 +979,7 @@ namespace sc {
 
     void svg_element::fetch_clip_path(const std::string &name) {
         auto element = reinterpret_cast<svg_header *>(svg)->get_named_element(name);
-        if (!element) return; // Named element not found :(
+        if (!element) return; // no such id: unclipped
         delete clip_path;
         clip_path = element->clone();
     }
@@ -1008,10 +997,10 @@ namespace sc {
 
     void svg_element::fetch_named_element(const std::string &name) {
         auto child = reinterpret_cast<svg_header *>(svg)->get_named_element(name);
-        if (!child) return; // Named element not found :(
+        if (!child) return; // no such id: nothing used
         child = child->clone();
 
-        // Inherit styles
+        // The <use>'s own colours and width, where it sets them, win over the element's.
         if (fill != color::Black) child->set_fill(fill);
         if (stroke_color != color::Transparent) child->set_stroke(stroke_color);
         if (stroke_width != 1) child->set_stroke_width(stroke_width);
@@ -1046,11 +1035,11 @@ namespace sc {
     }
 
     void svg_defs::draw(svg_recorder *ctx) const {
-        return; // Definitions don't get drawn...
+        return; // only drawn through <use>
     }
 
     void svg_clip_path::draw(svg_recorder *ctx) const {
-        return; // Clip paths don't get drawn...
+        return; // only applied, as a clip
     }
 
     void svg_header::normalize(svg_point mv) {
