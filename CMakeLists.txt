@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 set(SC_MODULE graphics)
-project(simply-cpp-${SC_MODULE} LANGUAGES CXX)
+project(simply-cpp-${SC_MODULE} HOMEPAGE_URL "https://github.com/roelofrossouw/simply-cpp-graphics" LANGUAGES CXX)
 include(cmake/sc_bootstrap.cmake)
 
 option(SC_GRAPHICS_BUILD_TESTS "Build simply-cpp-graphics tests" ${PROJECT_IS_TOP_LEVEL})
@@ -8,7 +8,7 @@ option(SC_GRAPHICS_BUILD_TESTS "Build simply-cpp-graphics tests" ${PROJECT_IS_TO
 get_sc_version()
 message(STATUS "SimplyCPP ${SC_MODULE} Version: ${SC_VERSION}")
 
-find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.6.1)
+find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.7.0)
 # Through pkg-config: jammy's libtinyxml2-dev has no CMake package. As with sc-redis's hiredis, the
 # library is linked by path so the exported targets don't need pkg-config.
 config_or_install_package(tinyxml2 libtinyxml2-dev tinyxml2)
@@ -45,4 +45,4 @@ endif ()
 
 add_sc_example(sc-graphics-demo)
 
-package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.6.1~)" libtinyxml2-dev)
+package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.7.0~)" libtinyxml2-dev)
