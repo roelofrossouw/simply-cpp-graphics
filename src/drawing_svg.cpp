@@ -74,6 +74,25 @@ namespace sc {
             return value;
         }
 
+        std::string trimmed(const std::string &text);
+
+        // A length in pixels (CSS's 96 per inch): a number with px, pt, pc, mm, cm or in; 0 for a
+        // percentage or nothing, which the viewBox then decides.
+        double length(const char *text) {
+            if (!text) return 0;
+            char *end = nullptr;
+            const double value = std::strtod(text, &end);
+            if (end == text) return 0;
+            const std::string unit = trimmed(end);
+            if (unit.empty() || unit == "px") return value;
+            if (unit == "pt") return value * 96 / 72;
+            if (unit == "pc") return value * 16;
+            if (unit == "mm") return value * 96 / 25.4;
+            if (unit == "cm") return value * 96 / 2.54;
+            if (unit == "in") return value * 96;
+            return 0; // %, em and the like
+        }
+
         double angle_between(const double ux, const double uy, const double vx, const double vy) {
             return std::atan2(ux * vy - uy * vx, ux * vx + uy * vy);
         }
@@ -291,11 +310,19 @@ namespace sc {
                 std::vector<double> box;
                 numbers in{view_box};
                 for (double value = 0; in.next(value);) box.push_back(value);
+                const double width = length(root.Attribute("width")), height = length(root.Attribute("height"));
                 if (box.size() == 4 && box[2] > 0 && box[3] > 0) {
-                    into_.page({box[2], box[3]});
-                    start.placed = transform::translate(-box[0], -box[1]); // the viewBox at the origin
+                    // The viewBox at the origin, fitted into the width and height when they're given
+                    // (scaled evenly and centred, as SVG's preserveAspectRatio does by default).
+                    const double page_width = width > 0 ? width : height > 0 ? box[2] * height / box[3] : box[2];
+                    const double page_height = height > 0 ? height : width > 0 ? box[3] * width / box[2] : box[3];
+                    const double scale = std::min(page_width / box[2], page_height / box[3]);
+                    into_.page({page_width, page_height});
+                    start.placed = transform::translate(-box[0], -box[1])
+                                       .then(transform::scale(scale))
+                                       .then(transform::translate((page_width - box[2] * scale) / 2, (page_height - box[3] * scale) / 2));
                 } else {
-                    into_.page({number(root.Attribute("width")), number(root.Attribute("height"))});
+                    into_.page({width, height});
                 }
                 apply_paint(root, start);
                 children(root, start);

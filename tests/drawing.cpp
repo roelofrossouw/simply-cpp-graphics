@@ -94,6 +94,19 @@ int main() {
         CHECK(shape_at(picture, 3).appearance.fill().colour() == sc::color::Red);
     }
 
+    SECTION("A viewBox fitted into the width and height, in their units");
+    {
+        const auto scaled = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200px" height="100" viewBox="0 0 20 10">)svg"
+                                                  R"svg(<rect x="1" y="1" width="2" height="2"/></svg>)svg");
+        CHECK(scaled.page() == (sc::size{200, 100}));
+        CHECK(near(shape_at(scaled, 0).bounds(), 10, 10, 20, 20)); // ten times the viewBox
+        const auto wider = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100" viewBox="0 0 20 10">)svg"
+                                                 R"svg(<rect width="20" height="10"/></svg>)svg");
+        CHECK(near(shape_at(wider, 0).bounds(), 50, 0, 200, 100)); // evenly, centred
+        const auto inches = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="1in" viewBox="0 0 10 5"/>)svg");
+        CHECK(inches.page() == (sc::size{96, 48})); // the height in proportion
+    }
+
     SECTION("Clip paths");
     {
         const auto disc = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">)svg"
