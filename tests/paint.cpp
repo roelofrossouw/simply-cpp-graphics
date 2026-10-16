@@ -1,5 +1,5 @@
-// sc::stroke and sc::fill: what they hold, their defaults, colours converting to them, and when
-// they paint nothing.
+// sc::stroke, sc::fill and sc::appearance: what they hold, their defaults, colours converting to
+// them, and when they paint nothing.
 #include <paint.h>
 
 #include "sc_test.h"
@@ -43,6 +43,46 @@ int main() {
         const sc::fill ring{sc::color::Red, sc::fill_rule::even_odd};
         CHECK(ring.rule() == sc::fill_rule::even_odd);
         CHECK(ring != sc::fill{sc::color::Red});
+    }
+
+    SECTION("An appearance: a black outline and no fill by default");
+    {
+        const sc::appearance plain;
+        CHECK(plain.stroke() == sc::stroke{});
+        CHECK(plain.fill() == sc::fill::none());
+        CHECK(plain.visible());
+    }
+
+    SECTION("A colour or a stroke converts to an appearance: an outline only");
+    {
+        const sc::appearance red = sc::color::Red;
+        CHECK(red.stroke() == (sc::stroke{sc::color::Red, 1}));
+        CHECK(!red.fill().visible());
+        const sc::appearance thick = sc::stroke{sc::color::Blue, 3};
+        CHECK_EQ(thick.stroke().width(), 3.0);
+        CHECK(!thick.fill().visible());
+    }
+
+    SECTION("Braces give a stroke and a fill; filled() and none()");
+    {
+        const sc::appearance both = {sc::color::Black, sc::color{"gold"}};
+        CHECK(both.stroke() == (sc::stroke{sc::color::Black, 1}));
+        CHECK(both.fill() == sc::fill{sc::color{"gold"}});
+        const auto ring = sc::appearance::filled(sc::fill{sc::color::Red, sc::fill_rule::even_odd});
+        CHECK(!ring.stroke().visible());
+        CHECK(ring.fill().rule() == sc::fill_rule::even_odd);
+        CHECK(ring.visible());
+        CHECK(!sc::appearance::none().visible());
+        CHECK(!(sc::appearance{sc::stroke::none(), sc::color::Transparent}).visible());
+        CHECK(both != ring);
+    }
+
+    SECTION("Changing an appearance's stroke or fill");
+    {
+        sc::appearance look;
+        look.fill(sc::color::Green);
+        look.stroke(sc::stroke::none());
+        CHECK(look == sc::appearance::filled(sc::color::Green));
     }
 
     TEST_SUMMARY();

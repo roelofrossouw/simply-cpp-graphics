@@ -12,19 +12,18 @@
 #include <vector>
 
 namespace sc {
-    /// An SVG drawing, read into what a canvas draws: paths with their fill, stroke and stroke
-    /// width, in the drawing's own units with its viewBox at the origin, y down. Covers paths, the
+    /// An SVG drawing, read into what a canvas draws: paths with their appearance (fill, stroke and stroke
+    /// width), in the drawing's own units with its viewBox at the origin, y down. Covers paths, the
     /// basic shapes (rect with rx/ry, circle, polygon, line), groups, transforms, clip paths,
     /// <defs>/<use> and flat fill and stroke colours: icons and logos, not gradients, text or
     /// filters. Draw it with canvas::draw(svg, position).
     class svg {
     public:
-        /// One painted path: its stroke and fill (none when the SVG leaves one out); clip, when
-        /// set, limits the paint to inside it.
+        /// One painted path: its appearance (a stroke or fill the SVG leaves out is none); clip,
+        /// when set, limits the paint to inside it.
         struct element {
             path shape;
-            sc::stroke stroke = sc::stroke::none();
-            sc::fill fill;
+            sc::appearance appearance = sc::appearance::none();
             std::optional<path> clip;
         };
 

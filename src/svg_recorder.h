@@ -8,7 +8,7 @@
 
 namespace sc {
     // What svg_element draws into: the handful of PDF-style drawing operators it uses, recorded as
-    // sc::svg elements (a path with its fill or stroke) instead of being written anywhere.
+    // sc::svg elements (a path with its appearance) instead of being written anywhere.
     class svg_recorder {
     public:
         explicit svg_recorder(std::vector<svg::element> &elements) : elements(elements) {
@@ -81,8 +81,8 @@ namespace sc {
         void emit(const bool filled, const bool stroked, const fill_rule rule = fill_rule::nonzero) {
             const auto &now = states.back();
             if (!current.empty())
-                elements.push_back({current, stroked ? sc::stroke{now.stroke, now.width} : sc::stroke::none(),
-                                    filled ? sc::fill{now.fill, rule} : sc::fill::none(), now.clip});
+                elements.push_back({current, {stroked ? sc::stroke{now.stroke, now.width} : sc::stroke::none(),
+                                              filled ? sc::fill{now.fill, rule} : sc::fill::none()}, now.clip});
             current = {};
         }
     };

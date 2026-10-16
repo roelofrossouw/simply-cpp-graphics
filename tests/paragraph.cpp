@@ -24,8 +24,8 @@ namespace {
         std::vector<placed> texts;
 
     protected:
-        void paint_polygon(const sc::polygon &, const sc::stroke &, const sc::fill &) override {}
-        void paint_circle(const sc::circle &, const sc::stroke &, const sc::fill &) override {}
+        void paint_polygon(const sc::polygon &, const sc::appearance &) override {}
+        void paint_circle(const sc::circle &, const sc::appearance &) override {}
         void paint_line(const sc::line &, const sc::stroke &) override {}
         void paint_text(const sc::text &sample, const sc::fill &) override { texts.push_back({sample.content, sample.position.x(), sample.position.y()}); }
         double measure_width(const sc::text &sample) override { return sample.content.size() * sample.font.size / 2; }
