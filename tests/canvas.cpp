@@ -205,6 +205,22 @@ int main() {
         CHECK_EQ(canvas.calls, (std::vector<std::string>{"polygon 4", "circle 2", "line 2"})); // each as itself
     }
 
+    SECTION("A group: each of its shapes as itself, nested groups too");
+    {
+        recording_canvas canvas;
+        sc::group marks{sc::rect{0, 0, 5, 5}, sc::circle{{9, 9}, 2}, sc::line{{0, 0}, {3, 3}}};
+        marks.push_back(sc::group{sc::circle{{20, 20}, 3}});
+        canvas.draw(marks, {sc::stroke{sc::color::Blue, 2}, sc::color::Green});
+        CHECK_EQ(canvas.calls, (std::vector<std::string>{"polygon 4", "circle 2", "line 2", "circle 3"}));
+        canvas.calls.clear();
+        canvas.draw(sc::shape{marks}); // through sc::shape: the same
+        CHECK_EQ(canvas.calls.size(), std::size_t{4});
+        canvas.calls.clear();
+        marks.flip_horizontal(); // still a rect and circles after the flip
+        canvas.draw(marks);
+        CHECK_EQ(canvas.calls, (std::vector<std::string>{"polygon 4", "circle 2", "line 1", "circle 3"}));
+    }
+
     SECTION("Fonts");
     {
         const sc::font plain;
