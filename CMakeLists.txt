@@ -17,12 +17,29 @@ if (SC_GRAPHICS_TINYXML2_LIBRARY AND NOT EXISTS "${SC_GRAPHICS_TINYXML2_LIBRARY}
     unset(SC_GRAPHICS_TINYXML2_LIBRARY CACHE)
 endif ()
 find_library(SC_GRAPHICS_TINYXML2_LIBRARY NAMES tinyxml2 HINTS ${tinyxml2_LIBRARY_DIRS} REQUIRED)
+# sc::font_face: fontconfig finds the font, FreeType reads it. Through pkg-config too, linked by path.
+config_or_install_package(fontconfig libfontconfig-dev fontconfig)
+config_or_install_package(freetype2 libfreetype-dev freetype)
+foreach (library fontconfig freetype)
+    string(TOUPPER "SC_GRAPHICS_${library}_LIBRARY" cached)
+    if (${cached} AND NOT EXISTS "${${cached}}")
+        message(STATUS "${library}: the cached library location is gone, looking again")
+        unset(${cached} CACHE)
+    endif ()
+endforeach ()
+find_library(SC_GRAPHICS_FONTCONFIG_LIBRARY NAMES fontconfig HINTS ${fontconfig_LIBRARY_DIRS} REQUIRED)
+find_library(SC_GRAPHICS_FREETYPE_LIBRARY NAMES freetype HINTS ${freetype2_LIBRARY_DIRS} REQUIRED)
 
-set(SOURCE_OBJECTS include/font.h include/text.h)
+set(SOURCE_OBJECTS include/font.h include/text.h include/typeface.h)
 set(SOURCE_LIBRARIES)
 set(SOURCE_LINK_LIBRARIES)
 
 add_sc_object(canvas LINK_LIBRARIES sc::sc-core PUBLIC_LINK_LIBRARIES sc::sc-core)
+add_sc_object(paragraph LINK_LIBRARIES sc::sc-core)
+# fontconfig and FreeType stay out of the installed header.
+add_sc_object(font_face
+        LINK_LIBRARIES sc::sc-core PkgConfig::fontconfig PkgConfig::freetype2
+        PUBLIC_LINK_LIBRARIES ${SC_GRAPHICS_FONTCONFIG_LIBRARY} ${SC_GRAPHICS_FREETYPE_LIBRARY})
 add_sc_object(path LINK_LIBRARIES sc::sc-core)
 # The SVG reader (on tinyxml2) stays in src/, out of the installed headers.
 add_sc_object(svg
@@ -45,4 +62,4 @@ endif ()
 
 add_sc_example(sc-graphics-demo)
 
-package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.7.0~)" libtinyxml2-dev)
+package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.7.0~)" libtinyxml2-dev libfontconfig-dev libfreetype-dev)
