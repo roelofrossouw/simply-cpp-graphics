@@ -15,39 +15,34 @@
 #include <vector>
 
 namespace sc {
-    /// A shape and how it looks: one thing in a drawing. clip, when set, limits what's painted to
-    /// inside it.
+    /// A shape and how it looks, in a drawing; clip, when set, limits it to inside the clip.
     struct drawable {
         sc::shape shape;
         sc::appearance appearance;
         std::optional<path> clip;
 
-        /// The shape's bounds, within the clip's when there's one (the outline's width not included).
+        /// The shape's bounds within the clip's, the outline's width not included.
         [[nodiscard]] rect bounds() const;
 
         bool operator==(const drawable &) const = default;
     };
 
-    /// A line of text and its fill, in a drawing: its baseline starts at text.position.
+    /// A line of text and its fill, in a drawing.
     struct label {
         sc::text text;
         sc::fill fill{sc::color{0, 0, 0}}; // black; a literal, as paint.h's defaults are
         std::optional<path> clip;
 
-        /// The box its glyphs take, by its font's measurements (font.h): as wide as it advances,
-        /// from the ascender above the baseline to the descender below. A font that isn't installed
-        /// is estimated from its size.
+        /// The box its glyphs take: its advance wide, from the font's ascender to its descender
+        /// (estimated from the size when the font isn't installed), within the clip's bounds.
         [[nodiscard]] rect bounds() const;
 
         bool operator==(const label &other) const;
     };
 
-    /// A picture as data: a page size and the things on it, in order, each a drawable (a shape and
-    /// its appearance) or a label (text and its fill). Draw it on any canvas, change it as a whole
-    /// (transform it, flip it across its page), and read or write it as SVG.
-    ///
-    /// It's a canvas too: drawing on it records what's drawn, so a page can be drawn once and then
-    /// measured, flipped, or replayed onto a PDF or an image.
+    /// A picture as data: a page size and its items in order, drawables and labels. Draw it on any
+    /// canvas, transform or flip it as a whole, read or write it as SVG. It's a canvas too: drawing on
+    /// it records what's drawn, to measure, flip or replay later.
     ///
     ///     sc::drawing badge{{200, 100}};
     ///     badge.add(sc::rounded_rect{sc::rect{0, 0, 200, 100}, 12}, sc::appearance::filled(sc::color{"steelblue"}));
@@ -70,21 +65,19 @@ namespace sc {
         drawing &operator=(const drawing &) = default;
         drawing &operator=(drawing &&) noexcept = default;
 
-        /// Reads SVG: paths, the basic shapes (rect, circle, ellipse, line, polyline, polygon), text,
-        /// groups, transforms, clip paths, <defs> and <use>, flat colours and opacity, presentation
-        /// attributes and style="...". Shapes keep their kind where their transform allows (see
-        /// sc::transform::apply()). A mask is read as a clip of its shapes (their luminance aside).
-        /// The page is the viewBox, moved to the origin, or else the width and height. Not read:
-        /// gradients (a fallback colour is), patterns, markers, filters, CSS stylesheets.
-        /// Throws std::runtime_error when it isn't SVG.
+        /// Reads SVG: paths, basic shapes, text, groups, transforms, clip paths, <defs>/<use>, flat
+        /// colours and opacity, presentation attributes and style="...". Shapes keep their kind
+        /// where their transform allows; a mask is read as a clip of its shapes. The page is the
+        /// viewBox moved to the origin, else width and height. Not read: gradients (their fallback
+        /// colour is), patterns, markers, filters, stylesheets. Throws std::runtime_error when it
+        /// isn't SVG.
         [[nodiscard]] static drawing from_svg(std::string_view svg);
 
         /// Reads an SVG file; throws std::runtime_error when it can't be read or isn't SVG.
         [[nodiscard]] static drawing load_svg(const std::filesystem::path &file);
 
-        /// As SVG: every shape as its own element (a rotated_rect as a rotated <rect>, a group as a
-        /// <g>), labels as <text>, clips as <clipPath>s. from_svg() reads it back the same, but for
-        /// a group, which comes back as its shapes.
+        /// As SVG, each shape its own element (a rotated_rect a rotated <rect>, a group a <g>), so
+        /// from_svg() reads it back the same, a group as its shapes.
         [[nodiscard]] std::string to_svg() const;
 
         /// Writes to_svg() to a file; throws std::runtime_error when it can't.
@@ -94,8 +87,8 @@ namespace sc {
         [[nodiscard]] sc::size page() const { return page_; }
         void page(const sc::size &value) { page_ = value; }
 
-        /// Adds a shape as it is (where drawing it through the canvas calls records what the
-        /// canvas's primitives get: a rect as a polygon, say).
+        /// Adds a shape as it is (drawing it through the canvas calls records the primitives: a
+        /// rect as a polygon).
         void add(sc::shape shape, sc::appearance look = {}, std::optional<path> clip = {});
 
         /// Adds a line of text, black by default.
@@ -111,20 +104,18 @@ namespace sc {
         /// The area its items cover together; an empty rect when it has none.
         [[nodiscard]] rect bounds() const;
 
-        /// Everything through the transform: shapes and clips (keeping their kind where they can),
-        /// outlines' widths and text's sizes scaled with it, and each label moved to where its box
-        /// lands (its glyphs aren't mirrored or turned). The page stays as it is.
+        /// Every shape and clip through the transform, outlines and text sizes scaled with it; a
+        /// label moves to where its box lands, its glyphs not mirrored or turned. The page stays.
         drawing &apply(const transform &change);
 
-        /// Mirrored left to right, or top to bottom, about the middle of its page (of its bounds
-        /// when it has no page): the whole drawing flipped, shapes mirrored and moved across.
+        /// Mirrored about the middle of its page (of its bounds when it has none).
         drawing &flip_horizontal();
         drawing &flip_vertical();
 
         bool operator==(const drawing &other) const { return page_ == other.page_ && items_ == other.items_; }
 
     protected:
-        // Recording: each primitive is added as an item, inside the innermost clip pushed.
+        // Recording: each primitive becomes an item, inside the innermost clip pushed.
         void paint_polygon(const polygon &shape, const sc::appearance &look) override;
 
         void paint_circle(const circle &shape, const sc::appearance &look) override;
@@ -141,7 +132,7 @@ namespace sc {
 
         void pop_clip() override;
 
-        // Text measured by the font's own measurements (font.h), as sc-pdf and sc-mupdf measure it.
+        // By the font's measurements (font.h), as sc-pdf and sc-mupdf measure.
         double measure_width(const text &sample) override;
 
         double measure_x_height(const font &font) override;

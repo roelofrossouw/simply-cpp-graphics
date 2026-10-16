@@ -1,6 +1,4 @@
-// sc::drawing: reading SVG (shapes keeping their kind, paint, transforms, viewBox, clips, text,
-// <use>, style="..."), writing it back, bounds, transforms and flips across the page, recording
-// what's drawn on it, and the mistakes that throw.
+// sc::drawing: reading and writing SVG, bounds, transforms and flips, recording, and what throws.
 #include <drawing.h>
 
 #include "sc_test.h"

@@ -22,20 +22,11 @@
 namespace sc {
     class drawing;
 
-    /// Something to draw on, such as an sc::image or an sc::pdf, so the same calls draw on either.
+    /// Something to draw on (an sc::image, an sc::pdf, an sc::drawing), so the same calls draw on any.
+    /// Shapes take an sc::appearance (paint.h), a line a stroke, text a fill. Coordinates are the
+    /// canvas's own (pixels on an image, points on a PDF), from the top-left corner, y down.
     ///
-    /// Every shape is drawn with draw(shape, appearance): its outline painted by the appearance's
-    /// stroke (black, 1 wide, by default) and its inside by its fill (none by default). A colour
-    /// converts to an outline, so draw(box, sc::color::Red) outlines in red; draw(box, {stroke, fill})
-    /// gives both, and draw(box, sc::appearance::filled(sc::color::Red)) fills only. A line has no
-    /// inside: draw(line, stroke). Text is filled: draw(text, fill), black by default. Coordinates
-    /// are the canvas's own (pixels on an image, points on a PDF), from the top-left corner, y down.
-    /// Each shape works in either flavour (rect or rect_i, ...); any other sc::geometry draws
-    /// through its path, and an sc::shape as whichever shape it holds.
-    ///
-    /// A canvas implements a few primitives (polygon, circle, line, text and, if it can do better
-    /// than a polygon, rounded rectangles and paths); the draw() calls turn everything else into
-    /// those. Which stroke and fill features show is up to the canvas (see paint.h).
+    /// An engine implements the protected primitives; draw() reduces everything to them.
     class canvas {
     public:
         virtual ~canvas() = default;
@@ -79,7 +70,6 @@ namespace sc {
         void draw(const path &shape, const sc::appearance &look = {});
 
         /// Any other sc::geometry (a shape of your own: bounds() and to_path()), drawn as its path.
-        /// sc-core's shapes have the overloads above, so engines draw them natively.
         template<geometry G>
         void draw(const G &shape, const sc::appearance &look = {}) {
             draw(to_path(shape), look);
@@ -94,24 +84,21 @@ namespace sc {
         /// A drawing's items at its own coordinates, in order.
         void draw(const drawing &picture);
 
-        /// A drawing scaled to fit position with its aspect ratio kept, centred in it: its page (its
-        /// bounds when it has none), outlines and text scaled with it. An SVG file is drawn this way:
-        /// draw(sc::drawing::load_svg("logo.svg"), box).
+        /// A drawing's page (its bounds when it has none) fitted into position, aspect ratio kept,
+        /// centred.
+        ///
+        ///     canvas.draw(sc::drawing::load_svg("logo.svg"), box);
         void draw(const drawing &picture, const rect &position);
 
-        /// A line of text, its baseline starting at sample.position, its glyphs filled (black by
-        /// default). Planned: a stroke after the fill, for outlined text.
+        /// A line of text, its baseline starting at sample.position.
         void draw(const text &sample, const sc::fill &fill = color::Black);
 
         /// Text wrapped into text.area and aligned, measured with this canvas's text_width() so the
-        /// lines fit as it draws them: the first baseline the font's ascender below the top (the
-        /// installed face's, font.ascender(); else its capitals' height), then a line every
-        /// text.line_spacing x font size while they fit the area's height. Returns the text that
-        /// didn't fit, from its first line on (empty when it all did), to go on in another area.
+        /// lines fit as it draws them. Returns what didn't fit the area's height (empty when it all
+        /// did), to go on in another area.
         std::string draw(const paragraph &text, const sc::fill &fill = color::Black);
 
-        /// How far sample advances in its own font, in the canvas's units: the width it takes when
-        /// drawn. 0 for empty text or a size of 0.
+        /// How far sample advances when drawn, in the canvas's units; 0 for empty text or a size of 0.
         [[nodiscard]] double text_width(const text &sample);
 
         /// The height of a lowercase x and of a capital H in font, in the canvas's units.
@@ -129,9 +116,8 @@ namespace sc {
         void draw_line(const line &shape, const sc::stroke &stroke);
 
     protected:
-        // The primitives. draw() has already skipped what draws nothing and passes a stroke or fill
-        // that wouldn't show as stroke::none() or fill::none(), so a primitive only checks visible().
-        // A shape's appearance always has one of the two visible.
+        // The primitives. draw() has skipped what draws nothing and passes a stroke or fill that
+        // wouldn't show as none(), so a primitive only checks visible(); one of the two always is.
         virtual void paint_polygon(const polygon &shape, const sc::appearance &look) = 0;
 
         virtual void paint_circle(const circle &shape, const sc::appearance &look) = 0;
@@ -140,10 +126,8 @@ namespace sc {
 
         virtual void paint_text(const text &sample, const sc::fill &fill) = 0;
 
-        /// By default the path's curves are cut into straight segments: each closed subpath is
-        /// drawn as a polygon (so subpaths fill separately, whatever the fill rule: no holes), open
-        /// ones as lines. A canvas with curves, or that can fill several outlines at once, can do
-        /// better.
+        /// By default curves are cut into straight segments, each closed subpath a polygon (filled
+        /// separately whatever the fill rule: no holes) and open ones lines.
         virtual void paint_path(const path &shape, const sc::appearance &look);
 
         /// Limits what's painted to inside shape (by the nonzero rule; a clip rule is planned) until
@@ -160,7 +144,7 @@ namespace sc {
         virtual double measure_cap_height(const font &font) = 0;
 
         /// The radius is above 0 and at most half the shorter side. By default the corners are arcs
-        /// of short straight segments; a canvas with curves can do better.
+        /// of short straight segments.
         virtual void paint_rounded_rect(const rounded_rect &shape, const sc::appearance &look);
     };
 }

@@ -1,6 +1,6 @@
-// sc::canvas is the drawing interface sc-image (OpenCV), sc-pdf (PDFHummus) and sc-mupdf (MuPDF)
-// implement. This demo is a canvas of its own that only prints what it's asked to paint, to show what reaches an engine:
-// every shape, text and SVG drawing comes down to a few primitives.
+// sc::canvas is the drawing interface sc-image, sc-pdf and sc-mupdf implement. This demo is a canvas
+// that only prints what it's asked to paint: every shape, text and SVG drawing comes down to a few
+// primitives.
 
 #include <iostream>
 #include <string>
