@@ -1,6 +1,7 @@
 #pragma once
 
 #include "font.h"
+#include "paragraph.h"
 #include "path.h"
 #include "svg.h"
 #include "text.h"
@@ -13,6 +14,7 @@
 #include <rect.h>
 #include <rotated_rect.h>
 
+#include <string>
 #include <vector>
 
 namespace sc {
@@ -78,6 +80,13 @@ namespace sc {
 
         /// A line of text, its baseline starting at sample.position, in colour.
         void draw(const text &sample, const color &colour = color::Black);
+
+        /// Text wrapped into text.area and aligned, measured with this canvas's text_width() so the
+        /// lines fit as it draws them: the first baseline the font's ascender below the top (the
+        /// installed face's, font.ascender(); else its capitals' height), then a line every
+        /// text.line_spacing x font size while they fit the area's height. Returns the text that
+        /// didn't fit, from its first line on (empty when it all did), to go on in another area.
+        std::string draw(const paragraph &text, const color &colour = color::Black);
 
         /// Each of shapes, the same way.
         template<typename Geometry>

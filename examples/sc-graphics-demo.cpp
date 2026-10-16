@@ -8,6 +8,7 @@
 #include <sc.h>
 
 #include <canvas.h>
+#include <paragraph.h>
 
 namespace {
     // [readme]
@@ -62,6 +63,30 @@ int main() {
         const sc::text label{"simply-cpp", {10, 30}, sc::font::bold("serif", 18)};
         SC_STEP(canvas.draw(label));
         SC_SHOW(canvas.text_width(label));
+
+        sc::console::heading("Installed fonts: a font's face, and the face's typeface (fontconfig, FreeType)");
+        const sc::font body{"serif", 12};
+        SC_SHOW(body.available());
+        SC_SHOW(sc::font{"No Such Font"}.available()); // fontconfig would substitute one
+        SC_SHOW(body.width("simply-cpp")); // points at 12 pt: what sc-pdf and sc-mupdf draw
+        SC_SHOW(body.cap_height());
+        SC_SHOW(body.line_height());
+        if (const auto face = body.face()) {
+            SC_SHOW(face->typeface().name());
+            SC_SHOW(face->style());
+            SC_SHOW(face->weight());
+            SC_SHOW(face->typeface().faces().size()); // its styles: regular, bold, italic, ...
+            if (const auto bold = face->typeface().face(700)) SC_SHOW(bold->style());
+        }
+        SC_SHOW(sc::typeface::installed().size());
+        SC_SHOW(sc::wrap("Lines break at spaces, as wide as the font allows.", body, 120));
+
+        sc::console::heading("Paragraphs: wrapped and aligned in a rect, measured by the canvas");
+        const sc::paragraph text{"A paragraph wraps at its area's width; what doesn't fit its height comes back.",
+                                 {10, 10, 120, 40}, {"sans-serif", 10}, sc::align::left};
+        std::string rest;
+        SC_STEP(rest = canvas.draw(text));
+        SC_SHOW(rest);
 
         sc::console::heading("SVG: read into paths, scaled to fit and centred");
         const sc::svg logo{R"(<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200">)"

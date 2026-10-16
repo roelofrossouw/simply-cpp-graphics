@@ -7,7 +7,8 @@ itself: engines implement it, so the same calls draw on any of them.
 | Engine | Module | Draws with |
 |---|---|---|
 | `sc::image` | [sc-image](https://github.com/roelofrossouw/simply-cpp-image) | OpenCV, in pixels |
-| `sc::pdf` | [sc-pdf](https://github.com/roelofrossouw/simply-cpp-pdf) | PDFHummus, in points, as vectors |
+| `sc::pdf` | [sc-pdf](https://github.com/roelofrossouw/simply-cpp-pdf) | PDFHummus, in points, as vectors (Apache-2.0) |
+| `sc::mupdf::writer` | [sc-mupdf](https://github.com/roelofrossouw/simply-cpp-mupdf) | MuPDF, in points, as vectors (AGPL-3.0) |
 
 **Documentation:** the [simply-cpp wiki](https://github.com/roelofrossouw/simply-cpp/wiki) has a [Graphics guide](https://github.com/roelofrossouw/simply-cpp/wiki/Graphics) and the [sc-graphics reference](https://github.com/roelofrossouw/simply-cpp/wiki/Reference-sc-graphics), plus [getting started](https://github.com/roelofrossouw/simply-cpp/wiki/Getting-Started) for the whole suite.
 
@@ -40,6 +41,54 @@ width = 1)`; a transparent colour leaves the stroke or fill out.
 paths with their colours (paths, the basic shapes, groups, transforms, clip
 paths, `<defs>`/`<use>`, flat colours: icons and logos, not gradients, text or
 filters).
+
+## Fonts: typefaces, faces and fonts
+
+Installed fonts come in three levels, found through fontconfig and read with
+FreeType:
+
+| | What it is | Example |
+|---|---|---|
+| `sc::typeface` (`typeface.h`) | A family, with every style installed of it, usually in several files | DejaVu Sans |
+| `sc::font_face` (`font_face.h`) | One style of it, in one file | DejaVu Sans Bold, `DejaVuSans-Bold.ttf` |
+| `sc::font` (`font.h`) | A face at a size: what text is drawn and measured in | DejaVu Sans Bold at 12 pt |
+
+`sc::font` stays what you ask for (family, size, weight, italic, style).
+`face()` finds the installed face closest to it, `available()` tells whether
+its family is installed rather than substituted, and the measurements are
+that face at the font's size: how sc-pdf and sc-mupdf, which use the same
+files, draw it.
+
+```cpp
+#include <font.h>
+
+const sc::font body{"serif", 11};
+sc::font{"Roboto", 11}.available();     // false where Roboto isn't installed: it'd be substituted
+body.width("Total due");                // the glyphs' advances, no kerning, in points at 11
+body.ascender(); body.descender(); body.line_height(); body.x_height(); body.cap_height();
+const auto face = body.face();          // DejaVu Serif Book on Ubuntu: its file and index, weight 400
+face->typeface().faces();               // every style of the family: Bold, Italic, Condensed, ...
+face->typeface().face(700);             // the closest to bold
+sc::typeface::installed();              // every family on the machine
+```
+
+## Paragraphs: wrapping text in a rectangle
+
+```cpp
+#include <canvas.h>
+
+const auto rest = canvas.draw(sc::paragraph{text, {50, 100, 495, 600}, {"serif", 11}, sc::align::justify});
+if (!rest.empty()) { /* what didn't fit: on the next page */ }
+const auto lines = sc::wrap(text, sc::font{"serif", 11}, 495);   // just the lines
+```
+
+A paragraph breaks at spaces and newlines, and splits a word wider than the
+line. Its lines are aligned left, right, centred or justified (every line of
+a paragraph but its last), `line_spacing` x the size apart, the first baseline
+the font's ascender below the top. `canvas.draw(paragraph)` measures with that
+canvas's own `text_width()`, so the lines fit as that engine draws them (sc-image
+measures its Hershey fonts), and returns the text that didn't fit the
+rectangle's height. There's no kerning, as the engines draw none.
 
 ## Writing an engine
 
