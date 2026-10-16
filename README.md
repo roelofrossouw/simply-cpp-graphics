@@ -77,8 +77,9 @@ const auto logo = sc::drawing::load_svg("logo.svg");   // or from_svg(text)
 Reading SVG covers paths, the basic shapes, text, groups, transforms, clip
 paths, `<defs>`/`<use>`, flat colours with opacity, and `style="..."`; shapes
 keep their kind where their transform allows (a moved `<rect>` is an
-`sc::rect`, a turned one an `sc::rotated_rect`). Not read: gradients,
-patterns, markers, filters, masks and CSS stylesheets. Writing gives each
+`sc::rect`, a turned one an `sc::rotated_rect`), and a mask is read as a clip
+of its shapes (as icon exports use them). Not read: gradients (a fallback
+colour is), patterns, markers, filters and CSS stylesheets. Writing gives each
 shape its own element, so a drawing reads back as it was (a group comes back
 as its shapes). A drawing is a canvas too: drawing on it records what's drawn,
 as the primitives get it (a rect as a polygon), so a page can be drawn once
