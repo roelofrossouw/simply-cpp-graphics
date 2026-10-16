@@ -15,21 +15,21 @@ namespace {
     // A canvas implements the primitives; canvas::draw() does the rest.
     class printing_canvas : public sc::canvas {
     protected:
-        void paint_polygon(const sc::polygon &shape, const sc::color &stroke, const sc::color &fill, double width) override {
-            print("polygon of " + std::to_string(shape.size()) + " points", stroke, fill, width);
+        void paint_polygon(const sc::polygon &shape, const sc::stroke &stroke, const sc::fill &fill) override {
+            print("polygon of " + std::to_string(shape.size()) + " points", stroke, fill);
         }
 
-        void paint_circle(const sc::circle &shape, const sc::color &stroke, const sc::color &fill, double width) override {
-            print("circle, radius " + sc::console::format(shape.radius()), stroke, fill, width);
+        void paint_circle(const sc::circle &shape, const sc::stroke &stroke, const sc::fill &fill) override {
+            print("circle, radius " + sc::console::format(shape.radius()), stroke, fill);
         }
 
-        void paint_line(const sc::point &from, const sc::point &to, const sc::color &colour, double width) override {
-            print("line " + sc::console::format(from) + " to " + sc::console::format(to), colour, sc::color::Transparent, width);
+        void paint_line(const sc::line &shape, const sc::stroke &stroke) override {
+            print("line " + sc::console::format(shape.from()) + " to " + sc::console::format(shape.to()), stroke, sc::fill::none());
         }
 
-        void paint_text(const sc::text &sample, const sc::color &colour) override {
+        void paint_text(const sc::text &sample, const sc::fill &fill) override {
             sc::console::note("text \"" + sample.content + "\" in " + sample.font.family + " " + sc::console::format(sample.font.size) +
-                              ", " + sc::console::format(colour));
+                              ", " + sc::console::format(fill.colour()));
         }
 
         double measure_width(const sc::text &sample) override { return sample.content.size() * sample.font.size / 2; }
@@ -37,10 +37,10 @@ namespace {
         double measure_cap_height(const sc::font &font) override { return font.size * 0.7; }
 
     private:
-        static void print(const std::string &what, const sc::color &stroke, const sc::color &fill, const double width) {
+        static void print(const std::string &what, const sc::stroke &stroke, const sc::fill &fill) {
             std::string how;
-            if (width > 0) how += " outlined " + sc::console::format(stroke) + ", " + sc::console::format(width) + " wide";
-            if (fill.alpha() > 0) how += " filled " + sc::console::format(fill);
+            if (stroke.visible()) how += " outlined " + sc::console::format(stroke.colour()) + ", " + sc::console::format(stroke.width()) + " wide";
+            if (fill.visible()) how += " filled " + sc::console::format(fill.colour());
             sc::console::note(what + how);
         }
     };
@@ -52,12 +52,12 @@ int main() {
         sc::console::title("simply-cpp graphics: what a canvas is asked to paint");
         printing_canvas canvas;
 
-        sc::console::heading("Shapes: draw(shape, stroke = black, fill = transparent, width = 1)");
+        sc::console::heading("Shapes: draw(shape, stroke = black 1 wide, fill = none)");
         SC_STEP(canvas.draw(sc::rect{10, 10, 80, 40}));
-        SC_STEP(canvas.draw(sc::rect{10, 10, 80, 40}, sc::color::Red, sc::color{"gold"}, 2, 6)); // rounded: a polygon of arcs
-        SC_STEP(canvas.draw(sc::circle{{50, 50}, 20}, sc::color::Transparent, sc::color::Blue));
+        SC_STEP(canvas.draw(sc::rounded_rect{sc::rect{10, 10, 80, 40}, 6}, sc::stroke{sc::color::Red, 2}, sc::color{"gold"})); // a polygon of arcs here
+        SC_STEP(canvas.draw(sc::circle{{50, 50}, 20}, sc::stroke::none(), sc::color::Blue));
         SC_STEP(canvas.draw(sc::rotated_rect{{50, 50}, {40, 20}, 30}));
-        SC_STEP(canvas.draw(sc::line{{0, 0}, {100, 0}}, sc::color::Green, 0.5));
+        SC_STEP(canvas.draw(sc::line{{0, 0}, {100, 0}}, sc::stroke{sc::color::Green, 0.5}));
 
         sc::console::heading("Text: sc::text{content, where its baseline starts, sc::font}");
         const sc::text label{"simply-cpp", {10, 30}, sc::font::bold("serif", 18)};

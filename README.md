@@ -1,7 +1,8 @@
 # simply-cpp-graphics
 
-C++20 drawing interface for simply-cpp: `sc::canvas`, with `sc::text` and
-`sc::font`, `sc::path` (lines and curves) and `sc::svg`. It draws nothing
+C++20 drawing interface for simply-cpp: `sc::canvas`, with `sc::stroke` and
+`sc::fill`, `sc::text` and `sc::font`, `sc::path` (lines and curves) and
+`sc::svg`. It draws nothing
 itself: engines implement it, so the same calls draw on any of them.
 
 | Engine | Module | Draws with |
@@ -20,10 +21,10 @@ the canvas's own, from the top-left corner with y down.
 #include <canvas.h>
 
 void label(sc::canvas &on, const sc::rect &box, const std::string &name) {
-    on.draw(box);                                                   // black outline, 1 wide
-    on.draw(box, sc::color::Black, sc::color{0.9, 0.95, 1}, 1, 4);  // stroke, fill, width, corner radius
-    on.draw(sc::circle{box.center(), 3}, sc::color::Transparent, sc::color::Red); // filled only
-    on.draw(sc::line{box.left_top(), box.right_bottom()}, sc::color::Blue, 0.5);  // lines have no fill
+    on.draw(box);                                                       // black outline, 1 wide
+    on.draw(sc::rounded_rect{box, 4}, sc::color::Black, sc::color{0.9, 0.95, 1}); // stroke, fill
+    on.draw(sc::circle{box.center(), 3}, sc::stroke::none(), sc::color::Red);     // filled only
+    on.draw(sc::line{box.left_top(), box.right_bottom()}, sc::stroke{sc::color::Blue, 0.5}); // no fill
 
     sc::text caption{name, {box.left(), box.bottom() + 14}, {"sans-serif", 10}};
     caption.position.x(box.center().x() - on.text_width(caption) / 2);           // centred under it
@@ -33,9 +34,14 @@ void label(sc::canvas &on, const sc::rect &box, const std::string &name) {
 }
 ```
 
-Everything goes through `draw(shape, stroke = black, fill = transparent,
-width = 1)`; a transparent colour leaves the stroke or fill out.
-`draw(text, colour)` writes a line of text with its baseline at
+Everything goes through `draw(shape, stroke, fill)`: an `sc::stroke` (a colour
+and a width; black and 1 wide by default) for the outline and an `sc::fill` (a
+colour; none by default) for the inside. A colour converts to either, and
+`sc::stroke::none()` or a transparent colour leaves a part out. Rounded corners
+belong to the shape, `sc::rounded_rect{rect, radius}`; a line has no inside,
+`draw(line, stroke)`. Dashes, caps and joins, nibs, gradients and patterns are
+planned in `paint.h`; each engine draws what it supports and ignores the rest.
+`draw(text, fill)` writes a line of text (black by default) with its baseline at
 `text.position`, and `text_width(text)`, `text_x_height(font)` and
 `text_cap_height(font)` measure it. `sc::svg` reads SVG text or a file into
 paths with their colours (paths, the basic shapes, groups, transforms, clip
@@ -95,7 +101,8 @@ rectangle's height. There's no kerning, as the engines draw none.
 A canvas implements a few protected primitives; `draw()` reduces every shape
 to them, after leaving out invisible strokes and fills and empty shapes:
 
-- `paint_polygon`, `paint_circle`, `paint_line`, `paint_text` (required);
+- `paint_polygon`, `paint_circle`, `paint_line`, `paint_text` (required), each
+  given an `sc::stroke` and/or `sc::fill`, as `none()` when it wouldn't show;
 - `measure_width`, `measure_x_height`, `measure_cap_height` (required);
 - `paint_rounded_rect` and `paint_path`, which by default draw straight
   segments, and `push_clip`/`pop_clip`, which by default don't clip, for an
@@ -113,21 +120,21 @@ package (`simply-cpp-graphics`). The engine, copied from
 // A canvas implements the primitives; canvas::draw() does the rest.
 class printing_canvas : public sc::canvas {
 protected:
-    void paint_polygon(const sc::polygon &shape, const sc::color &stroke, const sc::color &fill, double width) override {
-        print("polygon of " + std::to_string(shape.size()) + " points", stroke, fill, width);
+    void paint_polygon(const sc::polygon &shape, const sc::stroke &stroke, const sc::fill &fill) override {
+        print("polygon of " + std::to_string(shape.size()) + " points", stroke, fill);
     }
 
-    void paint_circle(const sc::circle &shape, const sc::color &stroke, const sc::color &fill, double width) override {
-        print("circle, radius " + sc::console::format(shape.radius()), stroke, fill, width);
+    void paint_circle(const sc::circle &shape, const sc::stroke &stroke, const sc::fill &fill) override {
+        print("circle, radius " + sc::console::format(shape.radius()), stroke, fill);
     }
 
-    void paint_line(const sc::point &from, const sc::point &to, const sc::color &colour, double width) override {
-        print("line " + sc::console::format(from) + " to " + sc::console::format(to), colour, sc::color::Transparent, width);
+    void paint_line(const sc::line &shape, const sc::stroke &stroke) override {
+        print("line " + sc::console::format(shape.from()) + " to " + sc::console::format(shape.to()), stroke, sc::fill::none());
     }
 
-    void paint_text(const sc::text &sample, const sc::color &colour) override {
+    void paint_text(const sc::text &sample, const sc::fill &fill) override {
         sc::console::note("text \"" + sample.content + "\" in " + sample.font.family + " " + sc::console::format(sample.font.size) +
-                          ", " + sc::console::format(colour));
+                          ", " + sc::console::format(fill.colour()));
     }
 
     double measure_width(const sc::text &sample) override { return sample.content.size() * sample.font.size / 2; }
@@ -135,10 +142,10 @@ protected:
     double measure_cap_height(const sc::font &font) override { return font.size * 0.7; }
 
 private:
-    static void print(const std::string &what, const sc::color &stroke, const sc::color &fill, const double width) {
+    static void print(const std::string &what, const sc::stroke &stroke, const sc::fill &fill) {
         std::string how;
-        if (width > 0) how += " outlined " + sc::console::format(stroke) + ", " + sc::console::format(width) + " wide";
-        if (fill.alpha() > 0) how += " filled " + sc::console::format(fill);
+        if (stroke.visible()) how += " outlined " + sc::console::format(stroke.colour()) + ", " + sc::console::format(stroke.width()) + " wide";
+        if (fill.visible()) how += " filled " + sc::console::format(fill.colour());
         sc::console::note(what + how);
     }
 };

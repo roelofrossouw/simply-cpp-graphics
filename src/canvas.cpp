@@ -7,54 +7,42 @@
 
 namespace sc {
     namespace {
-        // Nothing to stroke without a colour or a width, nothing to fill without a colour.
-        bool visible(const color &stroke, const color &fill, const double width) {
-            return (stroke.alpha() > 0 && width > 0) || fill.alpha() > 0;
-        }
+        // The stroke and fill as the primitives get them: none when they wouldn't show.
+        sc::stroke shown(const sc::stroke &stroke) { return stroke.visible() ? stroke : sc::stroke::none(); }
 
-        // The stroke as the primitives get it: transparent with no width when it doesn't show.
-        std::pair<color, double> outline(const color &stroke, const double width) {
-            if (stroke.alpha() > 0 && width > 0) return {stroke, width};
-            return {color::Transparent, 0};
-        }
+        sc::fill shown(const sc::fill &fill) { return fill.visible() ? fill : sc::fill::none(); }
     }
 
-    void canvas::draw_rect(const rect &shape, const color &stroke, const color &fill, const double width, const double radius) {
-        if (!visible(stroke, fill, width)) return;
-        const double limit = std::min(shape.width(), shape.height()) / 2;
-        if (radius > 0 && limit > 0) {
-            const auto [line, line_width] = outline(stroke, width);
-            paint_rounded_rect(shape, std::min(radius, limit), line, fill, line_width);
-        } else {
-            draw_polygon(static_cast<polygon>(shape), stroke, fill, width);
-        }
+    void canvas::draw_rounded_rect(const rounded_rect &shape, const sc::stroke &stroke, const sc::fill &fill) {
+        if (!stroke.visible() && !fill.visible()) return;
+        const rect box = shape.rect();
+        const double radius = std::min(shape.radius(), std::min(box.width(), box.height()) / 2);
+        if (radius > 0) paint_rounded_rect(rounded_rect{box, radius}, shown(stroke), shown(fill));
+        else draw_polygon(static_cast<polygon>(box), stroke, fill);
     }
 
-    void canvas::draw_polygon(const polygon &shape, const color &stroke, const color &fill, const double width) {
-        if (shape.size() < 2 || !visible(stroke, fill, width)) return;
-        const auto [line, line_width] = outline(stroke, width);
-        paint_polygon(shape, line, fill, line_width);
+    void canvas::draw_polygon(const polygon &shape, const sc::stroke &stroke, const sc::fill &fill) {
+        if (shape.size() < 2 || (!stroke.visible() && !fill.visible())) return;
+        paint_polygon(shape, shown(stroke), shown(fill));
     }
 
-    void canvas::draw_circle(const circle &shape, const color &stroke, const color &fill, const double width) {
-        if (shape.radius() <= 0 || !visible(stroke, fill, width)) return;
-        const auto [line, line_width] = outline(stroke, width);
-        paint_circle(shape, line, fill, line_width);
+    void canvas::draw_circle(const circle &shape, const sc::stroke &stroke, const sc::fill &fill) {
+        if (shape.radius() <= 0 || (!stroke.visible() && !fill.visible())) return;
+        paint_circle(shape, shown(stroke), shown(fill));
     }
 
-    void canvas::draw(const text &sample, const color &colour) {
-        if (sample.content.empty() || colour.alpha() <= 0 || sample.font.size <= 0) return;
-        paint_text(sample, colour);
+    void canvas::draw_line(const line &shape, const sc::stroke &stroke) {
+        if (stroke.visible()) paint_line(shape, stroke);
     }
 
-    void canvas::draw(const path &shape, const color &stroke, const color &fill, const double width) {
-        draw_path(shape, stroke, fill, width);
+    void canvas::draw(const text &sample, const sc::fill &fill) {
+        if (sample.content.empty() || !fill.visible() || sample.font.size <= 0) return;
+        paint_text(sample, fill);
     }
 
-    void canvas::draw_path(const path &shape, const color &stroke, const color &fill, const double width) {
-        if (shape.empty() || !visible(stroke, fill, width)) return;
-        const auto [line, line_width] = outline(stroke, width);
-        paint_path(shape, line, fill, line_width);
+    void canvas::draw(const path &shape, const sc::stroke &stroke, const sc::fill &fill) {
+        if (shape.empty() || (!stroke.visible() && !fill.visible())) return;
+        paint_path(shape, shown(stroke), shown(fill));
     }
 
     void canvas::draw(const svg &drawing, const rect &position) {
@@ -65,17 +53,17 @@ namespace sc {
                            position.top() + (position.height() - drawing.height() * scale) / 2};
         for (const auto &element: drawing.elements()) {
             if (element.clip) push_clip(element.clip->transformed(scale, scale, offset));
-            draw_path(element.shape.transformed(scale, scale, offset), element.stroke, element.fill, element.width * scale);
+            draw(element.shape.transformed(scale, scale, offset), sc::stroke{element.stroke.colour(), element.stroke.width() * scale}, element.fill);
             if (element.clip) pop_clip();
         }
     }
 
-    void canvas::paint_path(const path &shape, const color &stroke, const color &fill, const double width) {
+    void canvas::paint_path(const path &shape, const sc::stroke &stroke, const sc::fill &fill) {
         for (const auto &[points, closed]: shape.flattened()) {
             if (closed) {
-                paint_polygon(points, stroke, fill, width);
-            } else if (width > 0) {
-                for (std::size_t i = 1; i < points.size(); ++i) paint_line(points[i - 1], points[i], stroke, width);
+                paint_polygon(points, stroke, fill);
+            } else if (stroke.visible()) {
+                for (std::size_t i = 1; i < points.size(); ++i) paint_line(line{points[i - 1], points[i]}, stroke);
             }
         }
     }
@@ -99,18 +87,14 @@ namespace sc {
         return font.size > 0 ? measure_cap_height(font) : 0;
     }
 
-    void canvas::draw_segment(const line &shape, const color &stroke, const double width) {
-        if (stroke.alpha() <= 0 || width <= 0) return;
-        paint_line(shape.from(), shape.to(), stroke, width);
-    }
-
-    void canvas::paint_rounded_rect(const rect &shape, const double radius, const color &stroke, const color &fill,
-                                    const double width) {
+    void canvas::paint_rounded_rect(const rounded_rect &shape, const sc::stroke &stroke, const sc::fill &fill) {
         // Each corner a quarter circle of short segments, around clockwise (y down) from the top left.
         constexpr int segments = 8;
+        const rect box = shape.rect();
+        const double radius = shape.radius();
         const point centres[] = {
-            {shape.left() + radius, shape.top() + radius}, {shape.right() - radius, shape.top() + radius},
-            {shape.right() - radius, shape.bottom() - radius}, {shape.left() + radius, shape.bottom() - radius}
+            {box.left() + radius, box.top() + radius}, {box.right() - radius, box.top() + radius},
+            {box.right() - radius, box.bottom() - radius}, {box.left() + radius, box.bottom() - radius}
         };
         std::vector<point> points;
         points.reserve(4 * (segments + 1));
@@ -121,6 +105,6 @@ namespace sc {
                 points.emplace_back(centres[corner].x() + radius * std::cos(angle), centres[corner].y() + radius * std::sin(angle));
             }
         }
-        paint_polygon(polygon{std::move(points)}, stroke, fill, width);
+        paint_polygon(polygon{std::move(points)}, stroke, fill);
     }
 }

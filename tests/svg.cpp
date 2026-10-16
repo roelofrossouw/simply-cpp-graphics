@@ -19,8 +19,8 @@ int main() {
         CHECK_EQ(drawing.height(), 200.0);
         CHECK_EQ(drawing.elements().size(), size_t{3});
         const auto &background = drawing.elements()[0];
-        CHECK(background.fill == sc::color::from_hex("#2a6f97"));
-        CHECK(background.stroke == sc::color::Transparent);
+        CHECK(background.fill.colour() == sc::color::from_hex("#2a6f97"));
+        CHECK(!background.stroke.visible());
         const auto box = background.shape.bounds();
         CHECK_NEAR(box.width(), 320.0, 1e-9);
         CHECK_NEAR(box.height(), 200.0, 1e-9);
@@ -31,8 +31,8 @@ int main() {
         CHECK_NEAR(circle.top(), 30.0, 0.5);
 
         const auto &smile = drawing.elements()[2];
-        CHECK(smile.fill == sc::color::Transparent);
-        CHECK_EQ(smile.width, 8.0);
+        CHECK(!smile.fill.visible());
+        CHECK_EQ(smile.stroke.width(), 8.0);
         CHECK_LT(130.0, smile.shape.bounds().bottom()); // the curve bends down the page
     }
 
@@ -72,5 +72,17 @@ int main() {
         CHECK_THROWS_AS(sc::svg{"not svg at all"}, std::runtime_error);
         CHECK_THROWS_AS(sc::svg{"<html></html>"}, std::runtime_error);
     }
+    SECTION("fill-rule is the element's fill's");
+    {
+        const sc::svg ring{R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">)svg"
+                           R"svg(<path fill-rule="evenodd" fill="#000000" d="M0 0 H10 V10 H0 Z M3 3 V7 H7 V3 Z"/>)svg"
+                           R"svg(<rect width="4" height="4" fill="#ff0000"/></svg>)svg"};
+        CHECK_EQ(ring.elements().size(), std::size_t{2});
+        if (ring.elements().size() == 2) {
+            CHECK(ring.elements()[0].fill.rule() == sc::fill_rule::even_odd);
+            CHECK(ring.elements()[1].fill.rule() == sc::fill_rule::nonzero);
+        }
+    }
+
     TEST_SUMMARY();
 }

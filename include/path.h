@@ -9,8 +9,7 @@
 namespace sc {
     /// A shape of straight lines and cubic Bezier curves, such as an SVG path: one or more
     /// subpaths, each started by move_to() and optionally closed by close(). Coordinates are y down.
-    /// even_odd picks how overlapping subpaths fill (a hole in a letter "o", say): by the even-odd
-    /// rule rather than the default nonzero winding rule.
+    /// How overlapping subpaths fill (a hole in an "o") is the fill's, not the path's: sc::fill_rule.
     class path {
     public:
         enum class kind { move, line, cubic, close };
@@ -24,8 +23,6 @@ namespace sc {
 
             bool operator==(const step &) const = default;
         };
-
-        bool even_odd = false;
 
         path &move_to(const point &to);
 

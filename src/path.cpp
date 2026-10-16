@@ -55,7 +55,6 @@ namespace sc {
     path path::transformed(const double scale_x, const double scale_y, const point &offset) const {
         const auto map = [&](const point &p) { return point{p.x() * scale_x + offset.x(), p.y() * scale_y + offset.y()}; };
         path result;
-        result.even_odd = even_odd;
         result.steps_.reserve(steps_.size());
         for (const auto &s: steps_) {
             if (s.type == kind::close) result.steps_.push_back(s);
