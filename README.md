@@ -1,21 +1,24 @@
 # simply-cpp-graphics
 
 C++20 drawing interface for simply-cpp: `sc::canvas`, with `sc::stroke` and
-`sc::fill`, `sc::text` and `sc::font`, and `sc::svg`. It draws sc-core's
-geometry, `sc::path` (lines and curves) included. It draws nothing
-itself: engines implement it, so the same calls draw on any of them.
+`sc::fill`, `sc::text` and `sc::font`, `sc::svg`, and page sizes for the PDF
+engines. It draws sc-core's geometry, `sc::path` (lines and curves) included.
+It draws nothing itself: engines implement it, so the same calls draw on any
+of them.
 
-| Engine | Module | Draws with |
-|---|---|---|
-| `sc::image` | [sc-image](https://github.com/roelofrossouw/simply-cpp-image) | OpenCV, in pixels |
-| `sc::pdf` | [sc-pdf](https://github.com/roelofrossouw/simply-cpp-pdf) | PDFHummus, in points, as vectors (Apache-2.0) |
-| `sc::mupdf::writer` | [sc-mupdf](https://github.com/roelofrossouw/simply-cpp-mupdf) | MuPDF, in points, as vectors (AGPL-3.0) |
+| Engine | Module | Draws with | Partly transparent colours |
+|---|---|---|---|
+| `sc::image` | [sc-image](https://github.com/roelofrossouw/simply-cpp-image) | OpenCV, in pixels | painted opaque |
+| `sc::pdf` | [sc-pdf](https://github.com/roelofrossouw/simply-cpp-pdf) | PDFHummus, in points, as vectors (Apache-2.0) | as they are |
+| `sc::mupdf::writer` | [sc-mupdf](https://github.com/roelofrossouw/simply-cpp-mupdf) | MuPDF, in points, as vectors (AGPL-3.0) | as they are |
 
 **Documentation:** the [simply-cpp wiki](https://github.com/roelofrossouw/simply-cpp/wiki) has a [Graphics guide](https://github.com/roelofrossouw/simply-cpp/wiki/Graphics) and the [sc-graphics reference](https://github.com/roelofrossouw/simply-cpp/wiki/Reference-sc-graphics), plus [getting started](https://github.com/roelofrossouw/simply-cpp/wiki/Getting-Started) for the whole suite.
 
-Shapes are sc-core's geometry (`rect`, `rotated_rect`, `polygon`, `circle`,
-`line`, each as double or int) and colours are `sc::color`s. Coordinates are
-the canvas's own, from the top-left corner with y down.
+Shapes are sc-core's geometry (`rect`, `rounded_rect`, `rotated_rect`,
+`polygon`, `circle`, `line`, each as double or int, and `path`) and colours are
+`sc::color`s. Any other `sc::geometry` (a type with `bounds()` and
+`to_path()`) draws through its path, and an `sc::shape` as whichever shape it
+holds. Coordinates are the canvas's own, from the top-left corner with y down.
 
 ```cpp
 #include <canvas.h>
@@ -37,7 +40,8 @@ void label(sc::canvas &on, const sc::rect &box, const std::string &name) {
 Everything goes through `draw(shape, stroke, fill)`: an `sc::stroke` (a colour
 and a width; black and 1 wide by default) for the outline and an `sc::fill` (a
 colour; none by default) for the inside. A colour converts to either, and
-`sc::stroke::none()` or a transparent colour leaves a part out. Rounded corners
+`sc::stroke::none()` or a transparent colour leaves a part out; transparency is
+the colour's alpha (see the table above for who honours it). Rounded corners
 belong to the shape, `sc::rounded_rect{rect, radius}`; a line has no inside,
 `draw(line, stroke)`. Dashes, caps and joins, nibs, gradients and patterns are
 planned in `paint.h`; each engine draws what it supports and ignores the rest.
@@ -95,6 +99,20 @@ the font's ascender below the top. `canvas.draw(paragraph)` measures with that
 canvas's own `text_width()`, so the lines fit as that engine draws them (sc-image
 measures its Hershey fonts), and returns the text that didn't fit the
 rectangle's height. There's no kerning, as the engines draw none.
+
+## Page sizes
+
+`page.h` holds the paper sizes the PDF engines take: `sc::page_size` (`a3`,
+`a4`, `a5`, `letter`, `legal`) and `sc::orientation` (`portrait`,
+`landscape`).
+
+```cpp
+#include <page.h>
+
+sc::page_dimensions(sc::page_size::a4);                                // 595 x 842 points
+sc::page_dimensions(sc::page_size::a3, sc::orientation::landscape);    // 1191 x 842
+sc::page_size_from("Letter");                                         // any case; else std::invalid_argument
+```
 
 ## Writing an engine
 
@@ -170,5 +188,5 @@ sudo curl -fsSL https://apt.roelof.co.za/setup.sh | bash
 sudo apt -y install simply-cpp-graphics-dev
 ```
 
-Usually you get it with an engine: `simply-cpp-image-dev` and
-`simply-cpp-pdf-dev` depend on it.
+Usually you get it with an engine: `simply-cpp-image-dev`,
+`simply-cpp-pdf-dev` and `simply-cpp-mupdf-dev` depend on it.

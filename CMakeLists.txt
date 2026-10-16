@@ -30,7 +30,7 @@ endforeach ()
 find_library(SC_GRAPHICS_FONTCONFIG_LIBRARY NAMES fontconfig HINTS ${fontconfig_LIBRARY_DIRS} REQUIRED)
 find_library(SC_GRAPHICS_FREETYPE_LIBRARY NAMES freetype HINTS ${freetype2_LIBRARY_DIRS} REQUIRED)
 
-set(SOURCE_OBJECTS include/font.h include/text.h include/typeface.h include/paint.h)
+set(SOURCE_OBJECTS include/font.h include/text.h include/typeface.h include/paint.h include/page.h)
 set(SOURCE_LIBRARIES)
 set(SOURCE_LINK_LIBRARIES)
 
