@@ -57,18 +57,27 @@ namespace sc {
         }, held.value());
     }
 
-    void canvas::draw(const svg &drawing, const rect &position) {
-        if (drawing.width() <= 0 || drawing.height() <= 0) return;
-        const double scale = std::min(position.width() / drawing.width(), position.height() / drawing.height());
-        if (scale <= 0) return;
-        const point offset{position.left() + (position.width() - drawing.width() * scale) / 2,
-                           position.top() + (position.height() - drawing.height() * scale) / 2};
-        for (const auto &element: drawing.elements()) {
-            if (element.clip) push_clip(element.clip->transformed(scale, scale, offset));
-            const auto &stroke = element.appearance.stroke();
-            draw(element.shape.transformed(scale, scale, offset), {sc::stroke{stroke.colour(), stroke.width() * scale}, element.appearance.fill()});
-            if (element.clip) pop_clip();
+    void canvas::draw(const drawing &picture) {
+        for (const auto &item: picture.items()) {
+            std::visit([this](const auto &thing) {
+                if (thing.clip) push_clip(*thing.clip);
+                if constexpr (std::same_as<std::decay_t<decltype(thing)>, drawable>) draw(thing.shape, thing.appearance);
+                else draw(thing.text, thing.fill);
+                if (thing.clip) pop_clip();
+            }, item);
         }
+    }
+
+    void canvas::draw(const drawing &picture, const rect &position) {
+        const rect frame = picture.page().area() > 0 ? rect{0, 0, picture.page().width(), picture.page().height()} : picture.bounds();
+        if (frame.width() <= 0 || frame.height() <= 0) return;
+        const double scale = std::min(position.width() / frame.width(), position.height() / frame.height());
+        if (scale <= 0) return;
+        const point offset{position.left() + (position.width() - frame.width() * scale) / 2,
+                           position.top() + (position.height() - frame.height() * scale) / 2};
+        drawing fitted = picture;
+        fitted.apply(transform::translate(-frame.left(), -frame.top()).then(transform::scale(scale)).then(transform::translate(offset)));
+        draw(fitted);
     }
 
     void canvas::paint_path(const path &shape, const sc::appearance &look) {

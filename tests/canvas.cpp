@@ -170,8 +170,8 @@ int main() {
         CHECK_LT(size_t{3}, canvas.calls.size()); // an open curve: short lines
         CHECK_EQ(canvas.calls.back(), std::string{"line 2"});
 
-        const sc::svg badge{R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">)svg"
-                            R"svg(<rect width="200" height="100" fill="#ff0000"/></svg>)svg"};
+        const auto badge = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">)svg"
+                                                 R"svg(<rect width="200" height="100" fill="#ff0000"/></svg>)svg");
         canvas.calls.clear();
         canvas.draw(badge, sc::rect{0, 0, 100, 100}); // half size, centred vertically
         CHECK_EQ(canvas.calls.size(), size_t{1});
@@ -182,9 +182,9 @@ int main() {
         CHECK_NEAR(bounds.height(), 50.0, 1e-9);
         CHECK(canvas.last_fill.colour() == sc::color::Red);
 
-        const sc::svg clipped{R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">)svg"
-                              R"svg(<defs><clipPath id="c"><rect width="5" height="5"/></clipPath></defs>)svg"
-                              R"svg(<rect clip-path="url(#c)" width="10" height="10" fill="#000000"/></svg>)svg"};
+        const auto clipped = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">)svg"
+                                                   R"svg(<defs><clipPath id="c"><rect width="5" height="5"/></clipPath></defs>)svg"
+                                                   R"svg(<rect clip-path="url(#c)" width="10" height="10" fill="#000000"/></svg>)svg");
         canvas.calls.clear();
         canvas.draw(clipped, sc::rect{0, 0, 10, 10});
         CHECK(!canvas.calls.empty() && canvas.calls.front().starts_with("clip"));

@@ -3,7 +3,6 @@
 #include "font.h"
 #include "paint.h"
 #include "paragraph.h"
-#include "svg.h"
 #include "text.h"
 
 #include <circle.h>
@@ -21,6 +20,8 @@
 #include <vector>
 
 namespace sc {
+    class drawing;
+
     /// Something to draw on, such as an sc::image or an sc::pdf, so the same calls draw on either.
     ///
     /// Every shape is drawn with draw(shape, appearance): its outline painted by the appearance's
@@ -90,9 +91,13 @@ namespace sc {
         /// Whichever shape it holds, as that shape (a line by the appearance's stroke alone).
         void draw(const shape &held, const sc::appearance &look = {});
 
-        /// An SVG drawing, scaled to fit position with its aspect ratio kept and centred in it, in
-        /// its own strokes and fills (stroke widths scale with it).
-        void draw(const svg &drawing, const rect &position);
+        /// A drawing's items at its own coordinates, in order.
+        void draw(const drawing &picture);
+
+        /// A drawing scaled to fit position with its aspect ratio kept, centred in it: its page (its
+        /// bounds when it has none), outlines and text scaled with it. An SVG file is drawn this way:
+        /// draw(sc::drawing::load_svg("logo.svg"), box).
+        void draw(const drawing &picture, const rect &position);
 
         /// A line of text, its baseline starting at sample.position, its glyphs filled (black by
         /// default). Planned: a stroke after the fill, for outlined text.
@@ -159,3 +164,6 @@ namespace sc {
         virtual void paint_rounded_rect(const rounded_rect &shape, const sc::appearance &look);
     };
 }
+
+// sc::drawing is a canvas too; including it here keeps canvas.h the one header to draw with.
+#include "drawing.h"

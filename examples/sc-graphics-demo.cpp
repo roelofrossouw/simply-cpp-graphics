@@ -90,12 +90,15 @@ int main() {
         SC_STEP(rest = canvas.draw(text));
         SC_SHOW(rest);
 
-        sc::console::heading("SVG: read into paths, scaled to fit and centred");
-        const sc::svg logo{R"(<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200">)"
-                           R"(<rect width="320" height="200" fill="#2a6f97"/>)"
-                           R"(<circle cx="160" cy="100" r="70" fill="#f4d35e"/></svg>)"};
-        SC_SHOW(logo.elements().size());
-        SC_STEP(canvas.draw(logo, sc::rect{0, 0, 160, 160}));
+        sc::console::heading("A drawing: shapes and text as data, read from SVG or built, drawn anywhere");
+        auto logo = sc::drawing::from_svg(R"(<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200">)"
+                                          R"(<rect width="320" height="200" fill="#2a6f97"/>)"
+                                          R"(<circle cx="100" cy="100" r="70" fill="#f4d35e"/></svg>)");
+        SC_SHOW(logo.size());
+        SC_STEP(logo.add(sc::text{"logo", {200, 110}, {"sans-serif", 24}}, sc::color::White));
+        SC_STEP(logo.flip_horizontal()); // across its page: the circle to the right, the text to the left
+        SC_STEP(canvas.draw(logo, sc::rect{0, 0, 160, 160})); // scaled to fit, centred
+        SC_SHOW(logo.to_svg().size());
     } catch (const std::exception &error) {
         std::cerr << "sc-graphics-demo: " << error.what() << '\n';
         return 1;
