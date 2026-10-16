@@ -4,6 +4,7 @@
 #include <cmath>
 #include <numbers>
 #include <utility>
+#include <variant>
 
 namespace sc {
     namespace {
@@ -43,6 +44,13 @@ namespace sc {
     void canvas::draw(const path &shape, const sc::stroke &stroke, const sc::fill &fill) {
         if (shape.empty() || (!stroke.visible() && !fill.visible())) return;
         paint_path(shape, shown(stroke), shown(fill));
+    }
+
+    void canvas::draw(const shape &held, const sc::stroke &stroke, const sc::fill &fill) {
+        std::visit([&](const auto &each) {
+            if constexpr (std::same_as<std::decay_t<decltype(each)>, line>) draw(each, stroke);
+            else draw(each, stroke, fill);
+        }, held.value());
     }
 
     void canvas::draw(const svg &drawing, const rect &position) {

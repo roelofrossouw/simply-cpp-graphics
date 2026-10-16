@@ -7,6 +7,7 @@
 #include "text.h"
 
 #include <circle.h>
+#include <geometry.h>
 #include <color.h>
 #include <line.h>
 #include <path.h>
@@ -73,6 +74,16 @@ namespace sc {
 
         /// A path of lines and curves; open subpaths are only stroked.
         void draw(const path &shape, const sc::stroke &stroke = {}, const sc::fill &fill = {});
+
+        /// Any other geometry (sc::geometry, such as a shape of your own), drawn as its path,
+        /// to_path(shape). sc-core's shapes have the overloads above, so engines draw them natively.
+        template<geometry G>
+        void draw(const G &shape, const sc::stroke &stroke = {}, const sc::fill &fill = {}) {
+            draw(to_path(shape), stroke, fill);
+        }
+
+        /// Whichever shape it holds, as that shape (a line by its stroke alone).
+        void draw(const shape &held, const sc::stroke &stroke = {}, const sc::fill &fill = {});
 
         /// An SVG drawing, scaled to fit position with its aspect ratio kept and centred in it, in
         /// its own strokes and fills (stroke widths scale with it).

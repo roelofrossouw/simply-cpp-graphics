@@ -48,6 +48,23 @@ namespace {
 
         void pop_clip() override { calls.push_back("unclip"); }
     };
+
+    // A shape of its own: bounds() and a to_path() next to it make it an sc::geometry.
+    struct diamond {
+        sc::point centre;
+        double radius;
+
+        [[nodiscard]] sc::rect bounds() const { return {centre.x() - radius, centre.y() - radius, 2 * radius, 2 * radius}; }
+    };
+
+    sc::path to_path(const diamond &shape) {
+        sc::path result;
+        const double x = shape.centre.x(), y = shape.centre.y(), r = shape.radius;
+        result.move_to({x, y - r}).line_to({x + r, y}).line_to({x, y + r}).line_to({x - r, y}).close();
+        return result;
+    }
+
+    static_assert(sc::geometry<diamond>);
 }
 
 int main() {
@@ -172,6 +189,20 @@ int main() {
         canvas.draw(clipped, sc::rect{0, 0, 10, 10});
         CHECK(!canvas.calls.empty() && canvas.calls.front().starts_with("clip"));
         CHECK(!canvas.calls.empty() && canvas.calls.back() == "unclip");
+    }
+
+    SECTION("Any geometry: a shape of its own, and sc::shape");
+    {
+        recording_canvas canvas;
+        canvas.draw(diamond{{50, 50}, 10}, sc::color::Black, sc::color::Red); // drawn as its path
+        CHECK_EQ(canvas.calls.back(), std::string{"polygon 4"});
+        CHECK(canvas.last_fill.colour() == sc::color::Red);
+        CHECK_NEAR(canvas.last_polygon[0].y(), 40.0, 1e-9);
+
+        const std::vector<sc::shape> marks{sc::rect{0, 0, 5, 5}, sc::circle{{9, 9}, 2}, sc::line{{0, 0}, {3, 3}}};
+        canvas.calls.clear();
+        for (const auto &mark: marks) canvas.draw(mark, sc::stroke{sc::color::Blue, 2}, sc::color::Green);
+        CHECK_EQ(canvas.calls, (std::vector<std::string>{"polygon 4", "circle 2", "line 2"})); // each as itself
     }
 
     SECTION("Fonts");
