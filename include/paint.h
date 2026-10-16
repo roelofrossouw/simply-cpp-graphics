@@ -3,6 +3,10 @@
 #include <color.h>
 
 namespace sc {
+    // Transparency is the colour's alpha, for strokes and fills alike: 0 leaves the part out; partly
+    // transparent colours are painted opaque by today's engines (sc-image, sc-pdf, sc-mupdf), and
+    // honouring them is up to each engine.
+
     /// How overlapping parts of a filled path count as inside: nonzero (the default: an area wound
     /// round in the same direction twice is still inside) or even-odd (every crossing of an outline
     /// toggles inside and outside, so a subpath inside another cuts a hole, as in a ring or an "o").
@@ -20,8 +24,7 @@ namespace sc {
     ///   - a dash pattern: dashes and gaps (dotted, dash-dot, or custom lengths) and a phase;
     ///   - line caps (butt, round, square) and joins (miter with a miter limit, round, bevel);
     ///   - a nib: the pen's shape and angle (round, or a flat calligraphic nib), for varying width;
-    ///   - a paint other than a flat colour: a gradient or pattern, as a fill can have;
-    ///   - opacity, once the engines draw translucent colours (today they're opaque).
+    ///   - a paint other than a flat colour: a gradient or pattern, as a fill can have.
     class stroke {
     public:
         /// Black, 1 wide.
@@ -60,8 +63,7 @@ namespace sc {
     /// Planned, each an engine may support or ignore (an engine that can't do one fills with the
     /// nearest flat colour):
     ///   - gradients: linear and radial, with colour stops;
-    ///   - patterns and images, tiled or stretched;
-    ///   - opacity, once the engines draw translucent colours (today they're opaque).
+    ///   - patterns and images, tiled or stretched.
     class fill {
     public:
         /// None: transparent.
