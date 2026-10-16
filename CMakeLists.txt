@@ -8,7 +8,7 @@ option(SC_GRAPHICS_BUILD_TESTS "Build simply-cpp-graphics tests" ${PROJECT_IS_TO
 get_sc_version()
 message(STATUS "SimplyCPP ${SC_MODULE} Version: ${SC_VERSION}")
 
-find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.8.0)
+find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.9.0)
 # Through pkg-config: jammy's libtinyxml2-dev has no CMake package. As with sc-redis's hiredis, the
 # library is linked by path so the exported targets don't need pkg-config.
 config_or_install_package(tinyxml2 libtinyxml2-dev tinyxml2)
@@ -40,7 +40,6 @@ add_sc_object(paragraph LINK_LIBRARIES sc::sc-core)
 add_sc_object(font_face
         LINK_LIBRARIES sc::sc-core PkgConfig::fontconfig PkgConfig::freetype2
         PUBLIC_LINK_LIBRARIES ${SC_GRAPHICS_FONTCONFIG_LIBRARY} ${SC_GRAPHICS_FREETYPE_LIBRARY})
-add_sc_object(path LINK_LIBRARIES sc::sc-core)
 # The SVG reader (on tinyxml2) stays in src/, out of the installed headers.
 add_sc_object(svg
         SOURCES src/svg_element.cpp src/svg_element.h src/svg_parser.cpp src/svg_parser.h src/svg_recorder.h
@@ -62,4 +61,7 @@ endif ()
 
 add_sc_example(sc-graphics-demo)
 
-package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.8.0~)" libtinyxml2-dev libfontconfig-dev libfreetype-dev)
+# sc::path moved to sc-core (1.9.0): the engines built against 2.x found it in this library, so
+# they're upgraded with it.
+package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.9.0~)" libtinyxml2-dev libfontconfig-dev libfreetype-dev
+        BREAKS "simply-cpp-image (<< 2.0.1~)" "simply-cpp-pdf (<< 2.0.1~)" "simply-cpp-mupdf (<< 2.0.1~)")

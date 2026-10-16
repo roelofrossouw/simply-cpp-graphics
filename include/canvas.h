@@ -3,13 +3,13 @@
 #include "font.h"
 #include "paint.h"
 #include "paragraph.h"
-#include "path.h"
 #include "svg.h"
 #include "text.h"
 
 #include <circle.h>
 #include <color.h>
 #include <line.h>
+#include <path.h>
 #include <point.h>
 #include <polygon.h>
 #include <rect.h>
