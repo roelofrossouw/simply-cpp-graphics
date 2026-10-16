@@ -1,7 +1,8 @@
 # simply-cpp-graphics
 
 C++20 drawing interface for simply-cpp: `sc::canvas`, with `sc::appearance`
-(an `sc::stroke` and an `sc::fill`), `sc::text` and `sc::font`, `sc::svg`, and page sizes for the PDF
+(an `sc::stroke` and an `sc::fill`), `sc::text` and `sc::font`, `sc::drawing`
+(shapes and text as data, read and written as SVG), and page sizes for the PDF
 engines. It draws sc-core's geometry, `sc::path` (lines and curves) included.
 It draws nothing itself: engines implement it, so the same calls draw on any
 of them.
@@ -33,7 +34,7 @@ void label(sc::canvas &on, const sc::rect &box, const std::string &name) {
     caption.position.x(box.center().x() - on.text_width(caption) / 2);           // centred under it
     on.draw(caption);
 
-    on.draw(sc::svg::load("logo.svg"), box);                        // fitted into box, centred
+    on.draw(sc::drawing::load_svg("logo.svg"), box);                // fitted into box, centred
 }
 ```
 
@@ -50,10 +51,38 @@ belong to the shape, `sc::rounded_rect{rect, radius}`; a line has no inside,
 planned in `paint.h`; each engine draws what it supports and ignores the rest.
 `draw(text, fill)` writes a line of text (black by default) with its baseline at
 `text.position`, and `text_width(text)`, `text_x_height(font)` and
-`text_cap_height(font)` measure it. `sc::svg` reads SVG text or a file into
-paths with their colours (paths, the basic shapes, groups, transforms, clip
-paths, `<defs>`/`<use>`, flat colours: icons and logos, not gradients, text or
-filters).
+`text_cap_height(font)` measure it.
+
+## Drawings: pictures as data, and SVG
+
+An `sc::drawing` (`drawing.h`, included by `canvas.h`) is a page size and the
+things on it, in order: `sc::drawable`s (a shape and its appearance) and
+`sc::label`s (a line of text and its fill), each optionally clipped. Build one
+with `add()`, or read it from SVG; change it as a whole; draw it on any
+canvas; write it out as SVG.
+
+```cpp
+sc::drawing badge{{200, 100}};
+badge.add(sc::rounded_rect{sc::rect{0, 0, 200, 100}, 12}, sc::appearance::filled(sc::color{"steelblue"}));
+badge.add(sc::text{"simply-cpp", {20, 60}, sc::font::bold("sans-serif", 24)}, sc::color::White);
+badge.bounds();                                // what's on it
+badge.flip_horizontal();                       // mirrored across its page, as a whole
+badge.apply(sc::transform::scale(0.5));        // outlines and text scale with it
+pdf.draw(badge, sc::rect{50, 50, 200, 100});   // fitted into the box, centred
+badge.save_svg("badge.svg");                   // or to_svg()
+
+const auto logo = sc::drawing::load_svg("logo.svg");   // or from_svg(text)
+```
+
+Reading SVG covers paths, the basic shapes, text, groups, transforms, clip
+paths, `<defs>`/`<use>`, flat colours with opacity, and `style="..."`; shapes
+keep their kind where their transform allows (a moved `<rect>` is an
+`sc::rect`, a turned one an `sc::rotated_rect`). Not read: gradients,
+patterns, markers, filters, masks and CSS stylesheets. Writing gives each
+shape its own element, so a drawing reads back as it was (a group comes back
+as its shapes). A drawing is a canvas too: drawing on it records what's drawn,
+as the primitives get it (a rect as a polygon), so a page can be drawn once
+and then measured, flipped, or replayed onto a PDF or an image.
 
 ## Fonts: typefaces, faces and fonts
 

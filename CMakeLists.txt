@@ -40,10 +40,9 @@ add_sc_object(paragraph LINK_LIBRARIES sc::sc-core)
 add_sc_object(font_face
         LINK_LIBRARIES sc::sc-core PkgConfig::fontconfig PkgConfig::freetype2
         PUBLIC_LINK_LIBRARIES ${SC_GRAPHICS_FONTCONFIG_LIBRARY} ${SC_GRAPHICS_FREETYPE_LIBRARY})
-# The SVG reader (on tinyxml2) stays in src/, out of the installed headers.
-add_sc_object(svg
-        SOURCES src/svg_element.cpp src/svg_element.h src/svg_parser.cpp src/svg_parser.h src/svg_recorder.h
-        INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src
+# Drawings, and reading and writing them as SVG (tinyxml2 stays in src/, out of the installed headers).
+add_sc_object(drawing
+        SOURCES src/drawing_svg.cpp
         LINK_LIBRARIES sc::sc-core PkgConfig::tinyxml2
         PUBLIC_LINK_LIBRARIES ${SC_GRAPHICS_TINYXML2_LIBRARY})
 
@@ -61,7 +60,7 @@ endif ()
 
 add_sc_example(sc-graphics-demo)
 
-# The canvas's primitives take an sc::appearance since 4.0.0: engines built against 3.x don't
-# implement them, so they're upgraded with it.
+# sc::drawing replaced sc::svg in 5.0.0: the engines' demos built against 4.x drew with sc::svg, so
+# they're upgraded with it.
 package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.11.0~)" libtinyxml2-dev libfontconfig-dev libfreetype-dev
-        BREAKS "simply-cpp-image (<< 3.0.0~)" "simply-cpp-pdf (<< 3.0.0~)" "simply-cpp-mupdf (<< 4.0.0~)")
+        BREAKS "simply-cpp-image (<< 3.0.1~)" "simply-cpp-pdf (<< 3.0.1~)" "simply-cpp-mupdf (<< 4.0.1~)")
