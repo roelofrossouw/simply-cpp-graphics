@@ -420,9 +420,9 @@ namespace sc {
                 return std::nullopt;
             }
 
-            // A clipPath's (or mask's) shapes, as one path in the drawing's coordinates for an element
-            // placed so. A mask is taken as a clip of its shapes, their luminance aside: what icon
-            // exports (Sketch's, say) use masks for.
+            // A clipPath's (or mask's) shapes as one path in the drawing's coordinates. A mask is taken
+            // as a clip of its shapes, their luminance aside: that's what icon exports (Sketch's) use
+            // masks for.
             std::optional<path> clip_path(const tinyxml2::XMLElement &clip, const transform &placed) const {
                 path outline;
                 collect(clip, transform_list(clip.Attribute("transform")).then(placed), outline, 0);

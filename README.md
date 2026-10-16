@@ -1,11 +1,9 @@
 # simply-cpp-graphics
 
-C++20 drawing interface for simply-cpp: `sc::canvas`, with `sc::appearance`
-(an `sc::stroke` and an `sc::fill`), `sc::text` and `sc::font`, `sc::drawing`
-(shapes and text as data, read and written as SVG), and page sizes for the PDF
-engines. It draws sc-core's geometry, `sc::path` (lines and curves) included.
-It draws nothing itself: engines implement it, so the same calls draw on any
-of them.
+C++20 drawing interface for simply-cpp: `sc::canvas`, `sc::appearance`
+(stroke and fill), text and fonts, `sc::drawing` (pictures as data, read and
+written as SVG) and page sizes. It draws nothing itself: engines implement it,
+so the same calls draw on any of them.
 
 | Engine | Module | Draws with | Partly transparent colours |
 |---|---|---|---|
@@ -15,11 +13,13 @@ of them.
 
 **Documentation:** the [simply-cpp wiki](https://github.com/roelofrossouw/simply-cpp/wiki) has a [Graphics guide](https://github.com/roelofrossouw/simply-cpp/wiki/Graphics) and the [sc-graphics reference](https://github.com/roelofrossouw/simply-cpp/wiki/Reference-sc-graphics), plus [getting started](https://github.com/roelofrossouw/simply-cpp/wiki/Getting-Started) for the whole suite.
 
+## Drawing
+
 Shapes are sc-core's geometry (`rect`, `rounded_rect`, `rotated_rect`,
-`polygon`, `circle`, `line`, each as double or int, and `path`) and colours are
-`sc::color`s. Any other `sc::geometry` (a type with `bounds()` and
-`to_path()`) draws through its path, an `sc::shape` as whichever shape it
-holds, and an `sc::group` shape by shape (each as itself, nested groups too). Coordinates are the canvas's own, from the top-left corner with y down.
+`polygon`, `circle`, `line`, as double or int, and `path`). Any other
+`sc::geometry` draws through its path, an `sc::shape` as the shape it holds,
+and an `sc::group` shape by shape. Coordinates are the canvas's own, from the
+top-left corner, y down.
 
 ```cpp
 #include <canvas.h>
@@ -38,35 +38,27 @@ void label(sc::canvas &on, const sc::rect &box, const std::string &name) {
 }
 ```
 
-Every shape goes through `draw(shape, appearance)`. An `sc::appearance` is an
-`sc::stroke` (a colour and a width; black and 1 wide by default) for the
-outline and an `sc::fill` (a colour and a fill rule; none by default) for the
-inside. A colour or a stroke converts to an appearance (an outline only),
-braces give both (`{stroke, fill}`), and `sc::appearance::filled(fill)` gives
-only the inside. `sc::stroke::none()` or a transparent colour leaves a part
-out; transparency is
-the colour's alpha (see the table above for who honours it). Rounded corners
-belong to the shape, `sc::rounded_rect{rect, radius}`; a line has no inside,
-`draw(line, stroke)`. Dashes, caps and joins, nibs, gradients and patterns are
-planned in `paint.h`; each engine draws what it supports and ignores the rest.
-`draw(text, fill)` writes a line of text (black by default) with its baseline at
-`text.position`, and `text_width(text)`, `text_x_height(font)` and
-`text_cap_height(font)` measure it.
+An `sc::appearance` is an `sc::stroke` (colour and width; black, 1 wide by
+default) and an `sc::fill` (colour and fill rule; none by default). A colour
+or stroke converts to an outline only, `{stroke, fill}` gives both, and
+`sc::appearance::filled(fill)` the inside only. Transparency is the colour's
+alpha; 0 leaves a part out. A line takes a stroke, text a fill (black by
+default), with its baseline at `text.position`; `text_width()`,
+`text_x_height()` and `text_cap_height()` measure it. Dashes, caps and joins,
+gradients and patterns are planned in `paint.h`.
 
-## Drawings: pictures as data, and SVG
+## Drawings and SVG
 
-An `sc::drawing` (`drawing.h`, included by `canvas.h`) is a page size and the
-things on it, in order: `sc::drawable`s (a shape and its appearance) and
-`sc::label`s (a line of text and its fill), each optionally clipped. Build one
-with `add()`, or read it from SVG; change it as a whole; draw it on any
-canvas; write it out as SVG.
+An `sc::drawing` (`drawing.h`, included by `canvas.h`) is a page size and its
+items in order: `sc::drawable`s (shape, appearance) and `sc::label`s (text,
+fill), each optionally clipped.
 
 ```cpp
 sc::drawing badge{{200, 100}};
 badge.add(sc::rounded_rect{sc::rect{0, 0, 200, 100}, 12}, sc::appearance::filled(sc::color{"steelblue"}));
 badge.add(sc::text{"simply-cpp", {20, 60}, sc::font::bold("sans-serif", 24)}, sc::color::White);
 badge.bounds();                                // what's on it
-badge.flip_horizontal();                       // mirrored across its page, as a whole
+badge.flip_horizontal();                       // mirrored across its page
 badge.apply(sc::transform::scale(0.5));        // outlines and text scale with it
 pdf.draw(badge, sc::rect{50, 50, 200, 100});   // fitted into the box, centred
 badge.save_svg("badge.svg");                   // or to_svg()
@@ -74,33 +66,31 @@ badge.save_svg("badge.svg");                   // or to_svg()
 const auto logo = sc::drawing::load_svg("logo.svg");   // or from_svg(text)
 ```
 
-Reading SVG covers paths, the basic shapes, text, groups, transforms, clip
-paths, `<defs>`/`<use>`, flat colours with opacity, and `style="..."`; shapes
-keep their kind where their transform allows (a moved `<rect>` is an
-`sc::rect`, a turned one an `sc::rotated_rect`), and a mask is read as a clip
-of its shapes (as icon exports use them). Not read: gradients (a fallback
-colour is), patterns, markers, filters and CSS stylesheets. Writing gives each
-shape its own element, so a drawing reads back as it was (a group comes back
-as its shapes). A drawing is a canvas too: drawing on it records what's drawn,
-as the primitives get it (a rect as a polygon), so a page can be drawn once
-and then measured, flipped, or replayed onto a PDF or an image.
+Reading SVG covers paths, basic shapes, text, groups, transforms, clip paths,
+`<defs>`/`<use>`, flat colours with opacity and `style="..."`. Shapes keep
+their kind where their transform allows (a moved `<rect>` stays an `sc::rect`,
+a turned one becomes an `sc::rotated_rect`); a mask is read as a clip of its
+shapes. Not read: gradients (their fallback colour is), patterns, markers,
+filters and stylesheets. Writing gives each shape its own element, so a
+drawing reads back as it was (a group as its shapes).
 
-## Fonts: typefaces, faces and fonts
+A drawing is a canvas too: drawing on it records the primitives (a rect as a
+polygon), so a page drawn once can be measured, flipped or replayed onto a PDF
+or an image.
 
-Installed fonts come in three levels, found through fontconfig and read with
-FreeType:
+## Fonts
+
+Installed fonts, found through fontconfig and read with FreeType:
 
 | | What it is | Example |
 |---|---|---|
-| `sc::typeface` (`typeface.h`) | A family, with every style installed of it, usually in several files | DejaVu Sans |
+| `sc::typeface` (`typeface.h`) | A family, with every style installed of it | DejaVu Sans |
 | `sc::font_face` (`font_face.h`) | One style of it, in one file | DejaVu Sans Bold, `DejaVuSans-Bold.ttf` |
-| `sc::font` (`font.h`) | A face at a size: what text is drawn and measured in | DejaVu Sans Bold at 12 pt |
+| `sc::font` (`font.h`) | What text is drawn in: family, size, weight, italic, style | DejaVu Sans Bold at 12 pt |
 
-`sc::font` stays what you ask for (family, size, weight, italic, style).
-`face()` finds the installed face closest to it, `available()` tells whether
-its family is installed rather than substituted, and the measurements are
-that face at the font's size: how sc-pdf and sc-mupdf, which use the same
-files, draw it.
+A font's measurements are its closest installed face at its size, as sc-pdf
+and sc-mupdf draw it; `available()` tells whether its family is installed
+rather than substituted.
 
 ```cpp
 #include <font.h>
@@ -115,7 +105,7 @@ face->typeface().face(700);             // the closest to bold
 sc::typeface::installed();              // every family on the machine
 ```
 
-## Paragraphs: wrapping text in a rectangle
+## Paragraphs
 
 ```cpp
 #include <canvas.h>
@@ -125,19 +115,14 @@ if (!rest.empty()) { /* what didn't fit: on the next page */ }
 const auto lines = sc::wrap(text, sc::font{"serif", 11}, 495);   // just the lines
 ```
 
-A paragraph breaks at spaces and newlines, and splits a word wider than the
-line. Its lines are aligned left, right, centred or justified (every line of
-a paragraph but its last), `line_spacing` x the size apart, the first baseline
-the font's ascender below the top. `canvas.draw(paragraph)` measures with that
-canvas's own `text_width()`, so the lines fit as that engine draws them (sc-image
-measures its Hershey fonts), and returns the text that didn't fit the
-rectangle's height. There's no kerning, as the engines draw none.
+Lines break at spaces and newlines (a word wider than the line is split), are
+aligned left, right, centred or justified (all but a paragraph's last), and
+are `line_spacing` x the size apart, the first baseline the font's ascender
+below the top. `canvas.draw(paragraph)` measures with that canvas's
+`text_width()`, so lines fit as that engine draws them, and returns the text
+that didn't fit. No kerning, as the engines draw none.
 
 ## Page sizes
-
-`page.h` holds the paper sizes the PDF engines take: `sc::page_size` (`a3`,
-`a4`, `a5`, `letter`, `legal`) and `sc::orientation` (`portrait`,
-`landscape`).
 
 ```cpp
 #include <page.h>
@@ -147,25 +132,26 @@ sc::page_dimensions(sc::page_size::a3, sc::orientation::landscape);    // 1191 x
 sc::page_size_from("Letter");                                         // any case; else std::invalid_argument
 ```
 
+Sizes are `a3`, `a4`, `a5`, `letter` and `legal`.
+
 ## Writing an engine
 
 A canvas implements a few protected primitives; `draw()` reduces every shape
-to them, after leaving out invisible strokes and fills and empty shapes:
+to them, leaving out empty shapes and invisible strokes and fills (passed as
+`none()`):
 
-- `paint_polygon`, `paint_circle` (given an `sc::appearance`), `paint_line` (an
-  `sc::stroke`) and `paint_text` (an `sc::fill`), all required; a stroke or fill
-  that wouldn't show comes as `none()`;
-- `measure_width`, `measure_x_height`, `measure_cap_height` (required);
-- `paint_rounded_rect` and `paint_path` (an `sc::appearance`), which by default draw straight
-  segments, and `push_clip`/`pop_clip`, which by default don't clip, for an
-  engine that can do better.
+- required: `paint_polygon`, `paint_circle` (an `sc::appearance`),
+  `paint_line` (an `sc::stroke`), `paint_text` (an `sc::fill`), and
+  `measure_width`, `measure_x_height`, `measure_cap_height`;
+- optional: `paint_rounded_rect` and `paint_path`, which default to straight
+  segments, and `push_clip`/`pop_clip`, which default to not clipping.
 
 ## Demo
 
-`sc-graphics-demo` is such an engine: a canvas that only prints what it's asked
-to paint, showing what each call becomes. It's installed with the runtime
-package (`simply-cpp-graphics`). The engine, copied from
-`examples/sc-graphics-demo.cpp` at configure time:
+`sc-graphics-demo`, installed with the runtime package
+(`simply-cpp-graphics`), is such an engine: a canvas that prints what it's
+asked to paint. Its engine, copied from `examples/sc-graphics-demo.cpp` at
+configure time:
 
 <!-- sc-example: examples/sc-graphics-demo.cpp -->
 ```cpp
