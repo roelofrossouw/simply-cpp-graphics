@@ -61,7 +61,7 @@ endif ()
 
 add_sc_example(sc-graphics-demo)
 
-# sc::path moved to sc-core (1.9.0): the engines built against 2.x found it in this library, so
-# they're upgraded with it.
+# The canvas's primitives take an sc::appearance since 4.0.0: engines built against 3.x don't
+# implement them, so they're upgraded with it.
 package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.10.0~)" libtinyxml2-dev libfontconfig-dev libfreetype-dev
-        BREAKS "simply-cpp-image (<< 2.0.1~)" "simply-cpp-pdf (<< 2.0.1~)" "simply-cpp-mupdf (<< 2.0.1~)")
+        BREAKS "simply-cpp-image (<< 3.0.0~)" "simply-cpp-pdf (<< 3.0.0~)" "simply-cpp-mupdf (<< 4.0.0~)")

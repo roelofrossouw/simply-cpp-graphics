@@ -15,16 +15,16 @@ namespace {
     // A canvas implements the primitives; canvas::draw() does the rest.
     class printing_canvas : public sc::canvas {
     protected:
-        void paint_polygon(const sc::polygon &shape, const sc::stroke &stroke, const sc::fill &fill) override {
-            print("polygon of " + std::to_string(shape.size()) + " points", stroke, fill);
+        void paint_polygon(const sc::polygon &shape, const sc::appearance &look) override {
+            print("polygon of " + std::to_string(shape.size()) + " points", look);
         }
 
-        void paint_circle(const sc::circle &shape, const sc::stroke &stroke, const sc::fill &fill) override {
-            print("circle, radius " + sc::console::format(shape.radius()), stroke, fill);
+        void paint_circle(const sc::circle &shape, const sc::appearance &look) override {
+            print("circle, radius " + sc::console::format(shape.radius()), look);
         }
 
         void paint_line(const sc::line &shape, const sc::stroke &stroke) override {
-            print("line " + sc::console::format(shape.from()) + " to " + sc::console::format(shape.to()), stroke, sc::fill::none());
+            print("line " + sc::console::format(shape.from()) + " to " + sc::console::format(shape.to()), stroke);
         }
 
         void paint_text(const sc::text &sample, const sc::fill &fill) override {
@@ -37,7 +37,9 @@ namespace {
         double measure_cap_height(const sc::font &font) override { return font.size * 0.7; }
 
     private:
-        static void print(const std::string &what, const sc::stroke &stroke, const sc::fill &fill) {
+        static void print(const std::string &what, const sc::appearance &look) {
+            const auto &stroke = look.stroke();
+            const auto &fill = look.fill();
             std::string how;
             if (stroke.visible()) how += " outlined " + sc::console::format(stroke.colour()) + ", " + sc::console::format(stroke.width()) + " wide";
             if (fill.visible()) how += " filled " + sc::console::format(fill.colour());
@@ -52,10 +54,10 @@ int main() {
         sc::console::title("simply-cpp graphics: what a canvas is asked to paint");
         printing_canvas canvas;
 
-        sc::console::heading("Shapes: draw(shape, stroke = black 1 wide, fill = none)");
+        sc::console::heading("Shapes: draw(shape, appearance = {stroke: black 1 wide, fill: none})");
         SC_STEP(canvas.draw(sc::rect{10, 10, 80, 40}));
-        SC_STEP(canvas.draw(sc::rounded_rect{sc::rect{10, 10, 80, 40}, 6}, sc::stroke{sc::color::Red, 2}, sc::color{"gold"})); // a polygon of arcs here
-        SC_STEP(canvas.draw(sc::circle{{50, 50}, 20}, sc::stroke::none(), sc::color::Blue));
+        SC_STEP(canvas.draw(sc::rounded_rect{sc::rect{10, 10, 80, 40}, 6}, {sc::stroke{sc::color::Red, 2}, sc::color{"gold"}})); // a polygon of arcs here
+        SC_STEP(canvas.draw(sc::circle{{50, 50}, 20}, sc::appearance::filled(sc::color::Blue)));
         SC_STEP(canvas.draw(sc::rotated_rect{{50, 50}, {40, 20}, 30}));
         SC_STEP(canvas.draw(sc::line{{0, 0}, {100, 0}}, sc::stroke{sc::color::Green, 0.5}));
 

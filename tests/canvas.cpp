@@ -16,17 +16,17 @@ namespace {
         sc::fill last_fill;
 
     protected:
-        void paint_polygon(const sc::polygon &shape, const sc::stroke &stroke, const sc::fill &fill) override {
+        void paint_polygon(const sc::polygon &shape, const sc::appearance &look) override {
             calls.push_back("polygon " + std::to_string(shape.size()));
             last_polygon = shape;
-            last_stroke = stroke;
-            last_fill = fill;
+            last_stroke = look.stroke();
+            last_fill = look.fill();
         }
 
-        void paint_circle(const sc::circle &shape, const sc::stroke &stroke, const sc::fill &fill) override {
+        void paint_circle(const sc::circle &shape, const sc::appearance &look) override {
             calls.push_back("circle " + std::to_string(static_cast<int>(shape.radius())));
-            last_stroke = stroke;
-            last_fill = fill;
+            last_stroke = look.stroke();
+            last_fill = look.fill();
         }
 
         void paint_line(const sc::line &, const sc::stroke &stroke) override {
@@ -79,7 +79,7 @@ int main() {
         CHECK_EQ(canvas.last_stroke.width(), 1.0);
         CHECK(!canvas.last_fill.visible());
 
-        canvas.draw(sc::rect_i{1, 2, 3, 4}, sc::stroke{sc::color::Red, 2}, sc::color::Blue);
+        canvas.draw(sc::rect_i{1, 2, 3, 4}, {sc::stroke{sc::color::Red, 2}, sc::color::Blue});
         CHECK_EQ(canvas.last_polygon[0], (sc::point{1, 2}));
         CHECK(canvas.last_fill.colour() == sc::color::Blue);
         CHECK_EQ(canvas.last_stroke.width(), 2.0);
@@ -140,7 +140,7 @@ int main() {
         canvas.draw(sc::line{{0, 0}, {1, 1}}, sc::stroke{sc::color::Black, 0});
         CHECK(canvas.calls.empty());
 
-        canvas.draw(sc::rect{0, 0, 10, 10}, sc::stroke{sc::color::Black, 0}, sc::color::Red); // fill only
+        canvas.draw(sc::rect{0, 0, 10, 10}, {sc::stroke{sc::color::Black, 0}, sc::color::Red}); // fill only
         CHECK(canvas.last_stroke == sc::stroke::none()); // passed on as none
         CHECK(canvas.last_fill.colour() == sc::color::Red);
     }
@@ -160,7 +160,7 @@ int main() {
         recording_canvas canvas;
         sc::path triangle;
         triangle.move_to({0, 0}).line_to({10, 0}).line_to({5, 8}).close();
-        canvas.draw(triangle, sc::color::Black, sc::color::Red);
+        canvas.draw(triangle, {sc::color::Black, sc::color::Red});
         CHECK_EQ(canvas.calls.back(), std::string{"polygon 3"}); // by default, a closed subpath is a polygon
 
         sc::path open;
@@ -194,14 +194,14 @@ int main() {
     SECTION("Any geometry: a shape of its own, and sc::shape");
     {
         recording_canvas canvas;
-        canvas.draw(diamond{{50, 50}, 10}, sc::color::Black, sc::color::Red); // drawn as its path
+        canvas.draw(diamond{{50, 50}, 10}, {sc::color::Black, sc::color::Red}); // drawn as its path
         CHECK_EQ(canvas.calls.back(), std::string{"polygon 4"});
         CHECK(canvas.last_fill.colour() == sc::color::Red);
         CHECK_NEAR(canvas.last_polygon[0].y(), 40.0, 1e-9);
 
         const std::vector<sc::shape> marks{sc::rect{0, 0, 5, 5}, sc::circle{{9, 9}, 2}, sc::line{{0, 0}, {3, 3}}};
         canvas.calls.clear();
-        for (const auto &mark: marks) canvas.draw(mark, sc::stroke{sc::color::Blue, 2}, sc::color::Green);
+        for (const auto &mark: marks) canvas.draw(mark, {sc::stroke{sc::color::Blue, 2}, sc::color::Green});
         CHECK_EQ(canvas.calls, (std::vector<std::string>{"polygon 4", "circle 2", "line 2"})); // each as itself
     }
 

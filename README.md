@@ -1,7 +1,7 @@
 # simply-cpp-graphics
 
-C++20 drawing interface for simply-cpp: `sc::canvas`, with `sc::stroke` and
-`sc::fill`, `sc::text` and `sc::font`, `sc::svg`, and page sizes for the PDF
+C++20 drawing interface for simply-cpp: `sc::canvas`, with `sc::appearance`
+(an `sc::stroke` and an `sc::fill`), `sc::text` and `sc::font`, `sc::svg`, and page sizes for the PDF
 engines. It draws sc-core's geometry, `sc::path` (lines and curves) included.
 It draws nothing itself: engines implement it, so the same calls draw on any
 of them.
@@ -25,8 +25,8 @@ holds. Coordinates are the canvas's own, from the top-left corner with y down.
 
 void label(sc::canvas &on, const sc::rect &box, const std::string &name) {
     on.draw(box);                                                       // black outline, 1 wide
-    on.draw(sc::rounded_rect{box, 4}, sc::color::Black, sc::color{0.9, 0.95, 1}); // stroke, fill
-    on.draw(sc::circle{box.center(), 3}, sc::stroke::none(), sc::color::Red);     // filled only
+    on.draw(sc::rounded_rect{box, 4}, {sc::color::Black, sc::color{0.9, 0.95, 1}}); // stroke, fill
+    on.draw(sc::circle{box.center(), 3}, sc::appearance::filled(sc::color::Red));     // filled only
     on.draw(sc::line{box.left_top(), box.right_bottom()}, sc::stroke{sc::color::Blue, 0.5}); // no fill
 
     sc::text caption{name, {box.left(), box.bottom() + 14}, {"sans-serif", 10}};
@@ -37,10 +37,13 @@ void label(sc::canvas &on, const sc::rect &box, const std::string &name) {
 }
 ```
 
-Everything goes through `draw(shape, stroke, fill)`: an `sc::stroke` (a colour
-and a width; black and 1 wide by default) for the outline and an `sc::fill` (a
-colour; none by default) for the inside. A colour converts to either, and
-`sc::stroke::none()` or a transparent colour leaves a part out; transparency is
+Every shape goes through `draw(shape, appearance)`. An `sc::appearance` is an
+`sc::stroke` (a colour and a width; black and 1 wide by default) for the
+outline and an `sc::fill` (a colour and a fill rule; none by default) for the
+inside. A colour or a stroke converts to an appearance (an outline only),
+braces give both (`{stroke, fill}`), and `sc::appearance::filled(fill)` gives
+only the inside. `sc::stroke::none()` or a transparent colour leaves a part
+out; transparency is
 the colour's alpha (see the table above for who honours it). Rounded corners
 belong to the shape, `sc::rounded_rect{rect, radius}`; a line has no inside,
 `draw(line, stroke)`. Dashes, caps and joins, nibs, gradients and patterns are
@@ -119,10 +122,11 @@ sc::page_size_from("Letter");                                         // any cas
 A canvas implements a few protected primitives; `draw()` reduces every shape
 to them, after leaving out invisible strokes and fills and empty shapes:
 
-- `paint_polygon`, `paint_circle`, `paint_line`, `paint_text` (required), each
-  given an `sc::stroke` and/or `sc::fill`, as `none()` when it wouldn't show;
+- `paint_polygon`, `paint_circle` (given an `sc::appearance`), `paint_line` (an
+  `sc::stroke`) and `paint_text` (an `sc::fill`), all required; a stroke or fill
+  that wouldn't show comes as `none()`;
 - `measure_width`, `measure_x_height`, `measure_cap_height` (required);
-- `paint_rounded_rect` and `paint_path`, which by default draw straight
+- `paint_rounded_rect` and `paint_path` (an `sc::appearance`), which by default draw straight
   segments, and `push_clip`/`pop_clip`, which by default don't clip, for an
   engine that can do better.
 
@@ -138,16 +142,16 @@ package (`simply-cpp-graphics`). The engine, copied from
 // A canvas implements the primitives; canvas::draw() does the rest.
 class printing_canvas : public sc::canvas {
 protected:
-    void paint_polygon(const sc::polygon &shape, const sc::stroke &stroke, const sc::fill &fill) override {
-        print("polygon of " + std::to_string(shape.size()) + " points", stroke, fill);
+    void paint_polygon(const sc::polygon &shape, const sc::appearance &look) override {
+        print("polygon of " + std::to_string(shape.size()) + " points", look);
     }
 
-    void paint_circle(const sc::circle &shape, const sc::stroke &stroke, const sc::fill &fill) override {
-        print("circle, radius " + sc::console::format(shape.radius()), stroke, fill);
+    void paint_circle(const sc::circle &shape, const sc::appearance &look) override {
+        print("circle, radius " + sc::console::format(shape.radius()), look);
     }
 
     void paint_line(const sc::line &shape, const sc::stroke &stroke) override {
-        print("line " + sc::console::format(shape.from()) + " to " + sc::console::format(shape.to()), stroke, sc::fill::none());
+        print("line " + sc::console::format(shape.from()) + " to " + sc::console::format(shape.to()), stroke);
     }
 
     void paint_text(const sc::text &sample, const sc::fill &fill) override {
@@ -160,7 +164,9 @@ protected:
     double measure_cap_height(const sc::font &font) override { return font.size * 0.7; }
 
 private:
-    static void print(const std::string &what, const sc::stroke &stroke, const sc::fill &fill) {
+    static void print(const std::string &what, const sc::appearance &look) {
+        const auto &stroke = look.stroke();
+        const auto &fill = look.fill();
         std::string how;
         if (stroke.visible()) how += " outlined " + sc::console::format(stroke.colour()) + ", " + sc::console::format(stroke.width()) + " wide";
         if (fill.visible()) how += " filled " + sc::console::format(fill.colour());

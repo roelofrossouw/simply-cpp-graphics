@@ -56,8 +56,8 @@ namespace sc {
     /// overlap. fill::none() (or a transparent colour) leaves it out, and is the default, so a shape
     /// is only outlined unless it's given a fill.
     ///
-    ///     canvas.draw(box, sc::stroke::none(), sc::color{0.9, 0.95, 1});               // a colour is a fill
-    ///     canvas.draw(ring, sc::stroke::none(), sc::fill{sc::color::Blue, sc::fill_rule::even_odd});
+    ///     canvas.draw(box, {sc::color::Black, sc::color{0.9, 0.95, 1}});      // a colour is a fill
+    ///     canvas.draw(ring, sc::appearance::filled(sc::fill{sc::color::Blue, sc::fill_rule::even_odd}));
     ///
     /// Planned, each an engine may support or ignore (an engine that can't do one fills with the
     /// nearest flat colour):
@@ -89,5 +89,46 @@ namespace sc {
     private:
         sc::color colour_{0, 0, 0, 0}; // transparent
         fill_rule rule_ = fill_rule::nonzero;
+    };
+
+    /// How a shape looks: the stroke for its outline and the fill for its inside. By default a
+    /// black outline 1 wide and no fill. A colour or a stroke converts to one (an outline only), and
+    /// braces give both:
+    ///
+    ///     canvas.draw(box);                                                  // black outline
+    ///     canvas.draw(box, sc::color::Red);                                  // red outline
+    ///     canvas.draw(box, {sc::stroke{sc::color::Black, 2}, sc::color{0.9, 0.95, 1}});   // outline, fill
+    ///     canvas.draw(dot, sc::appearance::filled(sc::color::Red));          // fill only
+    class appearance {
+    public:
+        appearance() = default;
+
+        /// An outline in this colour, 1 wide, and no fill.
+        appearance(const sc::color &outline) : stroke_(outline) {
+        }
+
+        appearance(const sc::stroke &stroke, const sc::fill &fill = {}) : stroke_(stroke), fill_(fill) {
+        }
+
+        /// Only the inside: no outline.
+        static appearance filled(const sc::fill &fill) { return {sc::stroke::none(), fill}; }
+
+        /// Nothing at all.
+        static appearance none() { return {sc::stroke::none(), sc::fill::none()}; }
+
+        [[nodiscard]] const sc::stroke &stroke() const { return stroke_; }
+        const sc::stroke &stroke(const sc::stroke &value) { return stroke_ = value; }
+
+        [[nodiscard]] const sc::fill &fill() const { return fill_; }
+        const sc::fill &fill(const sc::fill &value) { return fill_ = value; }
+
+        /// Whether it paints anything: a visible stroke or a visible fill.
+        [[nodiscard]] bool visible() const { return stroke_.visible() || fill_.visible(); }
+
+        bool operator==(const appearance &) const = default;
+
+    private:
+        sc::stroke stroke_;
+        sc::fill fill_;
     };
 }
