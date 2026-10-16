@@ -84,6 +84,9 @@ namespace sc {
             draw(to_path(shape), look);
         }
 
+        /// Each of the group's shapes, as itself, in this appearance (a line by its stroke alone).
+        void draw(const group &shapes, const sc::appearance &look = {});
+
         /// Whichever shape it holds, as that shape (a line by the appearance's stroke alone).
         void draw(const shape &held, const sc::appearance &look = {});
 

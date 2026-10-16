@@ -8,7 +8,7 @@ option(SC_GRAPHICS_BUILD_TESTS "Build simply-cpp-graphics tests" ${PROJECT_IS_TO
 get_sc_version()
 message(STATUS "SimplyCPP ${SC_MODULE} Version: ${SC_VERSION}")
 
-find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.10.0)
+find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.11.0)
 # Through pkg-config: jammy's libtinyxml2-dev has no CMake package. As with sc-redis's hiredis, the
 # library is linked by path so the exported targets don't need pkg-config.
 config_or_install_package(tinyxml2 libtinyxml2-dev tinyxml2)
@@ -63,5 +63,5 @@ add_sc_example(sc-graphics-demo)
 
 # The canvas's primitives take an sc::appearance since 4.0.0: engines built against 3.x don't
 # implement them, so they're upgraded with it.
-package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.10.0~)" libtinyxml2-dev libfontconfig-dev libfreetype-dev
+package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.11.0~)" libtinyxml2-dev libfontconfig-dev libfreetype-dev
         BREAKS "simply-cpp-image (<< 3.0.0~)" "simply-cpp-pdf (<< 3.0.0~)" "simply-cpp-mupdf (<< 4.0.0~)")

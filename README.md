@@ -17,8 +17,8 @@ of them.
 Shapes are sc-core's geometry (`rect`, `rounded_rect`, `rotated_rect`,
 `polygon`, `circle`, `line`, each as double or int, and `path`) and colours are
 `sc::color`s. Any other `sc::geometry` (a type with `bounds()` and
-`to_path()`) draws through its path, and an `sc::shape` as whichever shape it
-holds. Coordinates are the canvas's own, from the top-left corner with y down.
+`to_path()`) draws through its path, an `sc::shape` as whichever shape it
+holds, and an `sc::group` shape by shape (each as itself, nested groups too). Coordinates are the canvas's own, from the top-left corner with y down.
 
 ```cpp
 #include <canvas.h>

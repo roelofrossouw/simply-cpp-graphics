@@ -46,6 +46,10 @@ namespace sc {
         paint_path(shape, shown(look));
     }
 
+    void canvas::draw(const group &shapes, const sc::appearance &look) {
+        for (const auto &item: shapes) draw(item, look);
+    }
+
     void canvas::draw(const shape &held, const sc::appearance &look) {
         std::visit([&](const auto &each) {
             if constexpr (std::same_as<std::decay_t<decltype(each)>, line>) draw(each, look.stroke());
