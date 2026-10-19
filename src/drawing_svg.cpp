@@ -344,13 +344,7 @@ namespace sc {
 
             // A property: from style="..." first (it wins), then the presentation attribute.
             static std::optional<std::string> property(const web::element &element, const std::string &name) {
-                if (const auto style = element.attribute("style")) {
-                    std::istringstream declarations{std::string{*style}};
-                    for (std::string declaration; std::getline(declarations, declaration, ';');) {
-                        const auto colon = declaration.find(':');
-                        if (colon != std::string::npos && trimmed(declaration.substr(0, colon)) == name) return trimmed(declaration.substr(colon + 1));
-                    }
-                }
+                if (auto declared = element.style().value(name)) return std::move(*declared); // a copy, from the temporary style
                 if (const auto value = element.attribute(name)) return trimmed(std::string{*value});
                 return std::nullopt;
             }
