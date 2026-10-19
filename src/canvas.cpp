@@ -1,5 +1,7 @@
 #include "canvas.h"
 
+#include "glyphs.h"
+
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -38,7 +40,26 @@ namespace sc {
 
     void canvas::draw(const text &sample, const sc::fill &fill) {
         if (sample.content.empty() || !fill.visible() || sample.font.size <= 0) return;
-        paint_text(sample, fill);
+        const auto parts = detail::runs(sample.font, sample.content);
+        if (parts.size() == 1 && !parts[0].fallback && !parts[0].colour) {
+            paint_text(sample, fill);
+            return;
+        }
+        // Run by run along the baseline: each in the face that has it, emoji as bitmaps.
+        double x = sample.position.x();
+        const double y = sample.position.y();
+        for (const auto &run: parts) {
+            if (run.colour) {
+                const auto laid = detail::lay_out_colour(*run.face, run.text, sample.font.size);
+                for (const auto &glyph: laid.glyphs)
+                    paint_bitmap(glyph.picture, transform::scale(glyph.width, glyph.height).then(transform::translate(x + glyph.left, y + glyph.top)));
+                x += laid.advance;
+            } else {
+                const text piece{run.text, {x, y}, detail::font_of(sample.font, run)};
+                paint_text(piece, fill);
+                x += measure_width(piece);
+            }
+        }
     }
 
     void canvas::draw(const bitmap &picture, const rect &position) {
@@ -108,7 +129,14 @@ namespace sc {
 
     double canvas::text_width(const text &sample) {
         if (sample.content.empty() || sample.font.size <= 0) return 0;
-        return measure_width(sample);
+        const auto parts = detail::runs(sample.font, sample.content);
+        if (parts.size() == 1 && !parts[0].fallback && !parts[0].colour) return measure_width(sample);
+        double width = 0;
+        for (const auto &run: parts) {
+            if (run.colour) width += detail::lay_out_colour(*run.face, run.text, sample.font.size).advance;
+            else width += measure_width(text{run.text, sample.position, detail::font_of(sample.font, run)});
+        }
+        return width;
     }
 
     double canvas::text_x_height(const font &font) {

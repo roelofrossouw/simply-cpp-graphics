@@ -1,6 +1,7 @@
 // sc::typeface, sc::font_face and sc::font's face(): fontconfig finds the fonts, FreeType reads them.
 #include "font.h"
 #include "font_face.h"
+#include "glyphs.h"
 #include "typeface.h"
 
 #include <fontconfig/fontconfig.h>
@@ -8,8 +9,11 @@
 #include FT_FREETYPE_H
 #include FT_ADVANCES_H
 #include FT_TRUETYPE_TABLES_H
+#include <hb.h>
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <cctype>
 #include <cstdlib>
 #include <map>
@@ -183,7 +187,8 @@ namespace sc {
                 if (const auto found = faces.find(key); found != faces.end()) return found->second;
                 opened result;
                 if (library && FT_New_Face(library, file.c_str(), index, &result.face) != 0) result.face = nullptr;
-                if (result.face && (!FT_IS_SCALABLE(result.face) || result.face->units_per_EM == 0)) {
+                // Outline fonts, and colour ones whose glyphs are bitmaps (Noto Color Emoji's CBDT).
+                if (result.face && ((!FT_IS_SCALABLE(result.face) && !FT_HAS_COLOR(result.face)) || result.face->units_per_EM == 0)) {
                     FT_Done_Face(result.face);
                     result.face = nullptr;
                 }
@@ -335,8 +340,12 @@ namespace sc {
     bool font::available() const { return looked_up(*this).exact; }
 
     double font::width(const std::string_view text) const {
-        const auto &[face, exact] = looked_up(*this);
-        return face ? face->width(text, size) : 0;
+        double total = 0;
+        for (const auto &run: detail::runs(*this, text)) {
+            if (!run.face) continue;
+            total += run.colour ? detail::lay_out_colour(*run.face, run.text, size).advance : run.face->width(run.text, size);
+        }
+        return total;
     }
 
     double font::ascender() const { const auto &found = looked_up(*this).face; return found ? found->ascender(size) : 0; }
@@ -348,4 +357,313 @@ namespace sc {
     double font::x_height() const { const auto &found = looked_up(*this).face; return found ? found->x_height(size) : 0; }
 
     double font::cap_height() const { const auto &found = looked_up(*this).face; return found ? found->cap_height(size) : 0; }
+
+    // ---------------------------------------------------------------- runs and colour glyphs
+
+    namespace {
+        bool between(const char32_t code, const char32_t first, const char32_t last) { return code >= first && code <= last; }
+
+        // Shown as emoji by default (Unicode's Emoji_Presentation, roughly): most of the planes'
+        // pictographs, and the few in the BMP; the rest of the BMP's symbols (✓, ★, ☎) are text
+        // unless a VS16 follows.
+        bool emoji_by_default(const char32_t c) {
+            if (c >= 0x1F000) return between(c, 0x1F000, 0x1FAFF);
+            static const std::pair<char32_t, char32_t> ranges[] = {
+                {0x231A, 0x231B}, {0x23E9, 0x23EC}, {0x23F0, 0x23F0}, {0x23F3, 0x23F3}, {0x25FD, 0x25FE}, {0x2614, 0x2615},
+                {0x2648, 0x2653}, {0x267F, 0x267F}, {0x2693, 0x2693}, {0x26A1, 0x26A1}, {0x26AA, 0x26AB}, {0x26BD, 0x26BE},
+                {0x26C4, 0x26C5}, {0x26CE, 0x26CE}, {0x26D4, 0x26D4}, {0x26EA, 0x26EA}, {0x26F2, 0x26F3}, {0x26F5, 0x26F5},
+                {0x26FA, 0x26FA}, {0x26FD, 0x26FD}, {0x2705, 0x2705}, {0x270A, 0x270B}, {0x2728, 0x2728}, {0x274C, 0x274C},
+                {0x274E, 0x274E}, {0x2753, 0x2755}, {0x2757, 0x2757}, {0x2795, 0x2797}, {0x27B0, 0x27B0}, {0x27BF, 0x27BF},
+                {0x2B1B, 0x2B1C}, {0x2B50, 0x2B50}, {0x2B55, 0x2B55}};
+            return std::ranges::any_of(ranges, [&](const auto &range) { return between(c, range.first, range.second); });
+        }
+
+        bool regional_indicator(const char32_t c) { return between(c, 0x1F1E6, 0x1F1FF); }
+
+        // Characters that belong to the cluster before them: combining marks, variation selectors,
+        // joiners, skin tones, keycaps, tags.
+        bool extends(const char32_t c) {
+            return between(c, 0x0300, 0x036F) || between(c, 0x1AB0, 0x1AFF) || between(c, 0x20D0, 0x20FF) || between(c, 0xFE00, 0xFE0F) ||
+                   c == 0x200D || between(c, 0x1F3FB, 0x1F3FF) || between(c, 0xE0020, 0xE007F);
+        }
+
+        struct cluster {
+            std::string text;
+            std::vector<char32_t> codes;
+            bool emoji = false;
+        };
+
+        // UTF-8 text as clusters: a character with what extends it; after a ZWJ the next character
+        // too; regional indicators in pairs (a flag).
+        std::vector<cluster> clusters_of(const std::string_view text) {
+            std::vector<cluster> out;
+            bool joined = false;
+            for (std::size_t i = 0; i < text.size();) {
+                const std::size_t start = i;
+                const char32_t code = next_codepoint(text, i);
+                const bool pairs = !out.empty() && regional_indicator(code) && out.back().codes.size() == 1 && regional_indicator(out.back().codes[0]);
+                if (out.empty() || !(joined || extends(code) || pairs)) out.emplace_back();
+                auto &current = out.back();
+                current.text.append(text.substr(start, i - start));
+                current.codes.push_back(code);
+                joined = code == 0x200D;
+            }
+            for (auto &each: out) {
+                const bool text_style = std::ranges::find(each.codes, char32_t{0xFE0E}) != each.codes.end();
+                const bool emoji_style = std::ranges::find(each.codes, char32_t{0xFE0F}) != each.codes.end() ||
+                                         std::ranges::find(each.codes, char32_t{0x20E3}) != each.codes.end();
+                each.emoji = !text_style && (emoji_style || emoji_by_default(each.codes.front()));
+            }
+            return out;
+        }
+
+        // What a face must have for a cluster: its characters, not counting the invisible ones that
+        // only steer how they're shown.
+        bool face_covers(const font_face &face, const cluster &each) {
+            const auto &f = open(face);
+            if (!f.face) return false;
+            return std::ranges::all_of(each.codes, [&](const char32_t c) {
+                return c < 0x20 || between(c, 0xFE00, 0xFE0F) || c == 0x200D || FT_Get_Char_Index(f.face, c) != 0;
+            });
+        }
+
+        bool has_colour(const font_face &face) {
+            const auto &f = open(face);
+            return f.face && FT_HAS_COLOR(f.face);
+        }
+
+        // The installed face that has code, as fontconfig ranks them for the weight and slant; for
+        // emoji, a colour one first. Found once per character, weight, slant and kind.
+        std::optional<font_face> fallback_for(const char32_t code, const int weight, const bool italic, const bool emoji) {
+            static std::mutex guard;
+            static std::map<std::tuple<char32_t, int, bool, bool>, std::optional<font_face> > found;
+            const auto key = std::tuple{code, weight, italic, emoji};
+            {
+                const std::lock_guard lock{guard};
+                if (const auto known = found.find(key); known != found.end()) return known->second;
+            }
+            std::optional<font_face> result;
+            if (fontconfig_ready()) {
+                FcPattern *pattern = FcPatternCreate();
+                FcCharSet *wanted = FcCharSetCreate();
+                FcCharSetAddChar(wanted, code);
+                FcPatternAddCharSet(pattern, FC_CHARSET, wanted);
+                if (emoji) FcPatternAddString(pattern, FC_FAMILY, fc_text("emoji"));
+                FcPatternAddInteger(pattern, FC_WEIGHT, FcWeightFromOpenType(std::clamp(weight, 1, 1000)));
+                FcPatternAddInteger(pattern, FC_SLANT, italic ? FC_SLANT_ITALIC : FC_SLANT_ROMAN);
+                FcConfigSubstitute(nullptr, pattern, FcMatchPattern);
+                FcDefaultSubstitute(pattern);
+                FcResult status;
+                if (FcFontSet *sorted = FcFontSort(nullptr, pattern, FcFalse, nullptr, &status)) {
+                    std::optional<font_face> plain;
+                    for (int i = 0; i < sorted->nfont && !result; ++i) {
+                        FcCharSet *has = nullptr;
+                        if (FcPatternGetCharSet(sorted->fonts[i], FC_CHARSET, 0, &has) != FcResultMatch || !FcCharSetHasChar(has, code)) continue;
+                        auto face = face_of(sorted->fonts[i]);
+                        if (!face || !open(*face).face) continue;
+                        if (!emoji || has_colour(*face)) result = face;
+                        else if (!plain) plain = face;
+                    }
+                    if (!result) result = plain;
+                    FcFontSetDestroy(sorted);
+                }
+                FcCharSetDestroy(wanted);
+                FcPatternDestroy(pattern);
+            }
+            const std::lock_guard lock{guard};
+            return found.emplace(key, result).first->second;
+        }
+    }
+
+    std::vector<detail::text_run> detail::runs(const font &spec, const std::string_view text) {
+        std::vector<text_run> out;
+        const auto own = spec.face();
+        // Plain ASCII in a font that has it all: one run, as before (the usual case, kept quick).
+        if (own && std::ranges::all_of(text, [](const char c) { return static_cast<unsigned char>(c) < 0x80; }) && own->covers(text))
+            return {{std::string{text}, own, false, false}};
+        for (const auto &each: clusters_of(text)) {
+            text_run piece{each.text, own, false, false};
+            const bool emoji_wanted = each.emoji;
+            if (!own || emoji_wanted || !face_covers(*own, each)) {
+                const auto other = fallback_for(each.codes.front(), spec.weight, spec.italic, emoji_wanted);
+                if (other && face_covers(*other, each)) {
+                    piece.face = other;
+                    piece.fallback = !(own && *other == *own);
+                } else if (!own || !face_covers(*own, each)) {
+                    piece.face = other ? other : own; // nothing has it: drawn as the font can
+                    piece.fallback = other.has_value() && !(own && *other == *own);
+                }
+            }
+            piece.colour = piece.face && emoji_wanted && has_colour(*piece.face);
+            const bool same = !out.empty() && out.back().colour == piece.colour && out.back().fallback == piece.fallback &&
+                              out.back().face.has_value() == piece.face.has_value() && (!piece.face || *out.back().face == *piece.face);
+            if (same) out.back().text += piece.text;
+            else out.push_back(std::move(piece));
+        }
+        if (out.empty()) out.push_back({std::string{text}, own, false, false});
+        return out;
+    }
+
+    font detail::font_of(const font &spec, const text_run &run) {
+        if (!run.fallback || !run.face) return spec;
+        return font{run.face->family(), spec.size, run.face->weight(), run.face->italic(), run.face->style()};
+    }
+
+    namespace {
+        // A PNG of straight (not premultiplied) RGBA rows, its pixels stored uncompressed in the
+        // zlib stream (a canvas compresses it again, or keeps it as it is).
+        std::string png_of(const std::vector<unsigned char> &rgba, const unsigned width, const unsigned height) {
+            const auto crc = [](const std::string &data) {
+                static const auto table = [] {
+                    std::array<std::uint32_t, 256> t{};
+                    for (std::uint32_t n = 0; n < 256; ++n) {
+                        std::uint32_t c = n;
+                        for (int k = 0; k < 8; ++k) c = c & 1 ? 0xEDB88320u ^ (c >> 1) : c >> 1;
+                        t[n] = c;
+                    }
+                    return t;
+                }();
+                std::uint32_t c = 0xFFFFFFFFu;
+                for (const unsigned char byte: data) c = table[(c ^ byte) & 0xFF] ^ (c >> 8);
+                return c ^ 0xFFFFFFFFu;
+            };
+            const auto big = [](std::string &out, const std::uint32_t value) {
+                for (int shift = 24; shift >= 0; shift -= 8) out += static_cast<char>((value >> shift) & 0xFF);
+            };
+            const auto chunk = [&](std::string &out, const char *type, const std::string &data) {
+                big(out, static_cast<std::uint32_t>(data.size()));
+                const std::string typed = type + data;
+                out += typed;
+                big(out, crc(typed));
+            };
+            std::string raw;
+            raw.reserve((width * 4 + 1) * height);
+            for (unsigned y = 0; y < height; ++y) {
+                raw += '\0'; // no filter
+                raw.append(reinterpret_cast<const char *>(rgba.data() + std::size_t{y} * width * 4), std::size_t{width} * 4);
+            }
+            std::string zlib{"\x78\x01", 2};
+            for (std::size_t at = 0; at < raw.size() || at == 0; at += 65535) {
+                const std::size_t length = std::min<std::size_t>(65535, raw.size() - at);
+                zlib += static_cast<char>(at + length >= raw.size() ? 1 : 0);
+                zlib += static_cast<char>(length & 0xFF);
+                zlib += static_cast<char>(length >> 8);
+                zlib += static_cast<char>(~length & 0xFF);
+                zlib += static_cast<char>((~length >> 8) & 0xFF);
+                zlib.append(raw, at, length);
+                if (raw.empty()) break;
+            }
+            std::uint32_t a = 1, b = 0;
+            for (const unsigned char byte: raw) {
+                a = (a + byte) % 65521;
+                b = (b + a) % 65521;
+            }
+            big(zlib, b << 16 | a);
+            std::string header;
+            big(header, width);
+            big(header, height);
+            header += std::string{"\x08\x06\x00\x00\x00", 5}; // 8-bit RGBA
+            std::string out{"\x89PNG\r\n\x1a\n", 8};
+            chunk(out, "IHDR", header);
+            chunk(out, "IDAT", zlib);
+            chunk(out, "IEND", {});
+            return out;
+        }
+
+        // A colour glyph rendered once: its bitmap, and its box in ems from the pen on the baseline.
+        struct rendered {
+            bitmap picture;
+            double left, top, width, height; // ems; top above the baseline
+        };
+
+        // Renders glyph in colour, from the strike nearest 128 pixels (a bitmap font's) or at 128
+        // pixels (a COLR font's). Nothing for a blank glyph or one FreeType can't colour.
+        std::optional<rendered> render(const font_face &face, const unsigned glyph) {
+            static std::mutex guard;
+            static std::map<std::tuple<std::string, int, unsigned>, std::optional<rendered> > done;
+            const auto key = std::tuple{face.file(), face.index(), glyph};
+            {
+                const std::lock_guard lock{guard};
+                if (const auto known = done.find(key); known != done.end()) return known->second;
+            }
+            std::optional<rendered> result;
+            if (FT_Face f = open(face).face) {
+                double ppem = 128;
+                bool sized = false;
+                if (FT_HAS_FIXED_SIZES(f) && f->num_fixed_sizes > 0) {
+                    int best = 0;
+                    for (int i = 1; i < f->num_fixed_sizes; ++i)
+                        if (std::abs(f->available_sizes[i].y_ppem / 64.0 - 128) < std::abs(f->available_sizes[best].y_ppem / 64.0 - 128)) best = i;
+                    sized = FT_Select_Size(f, best) == 0;
+                    if (sized) ppem = f->available_sizes[best].y_ppem / 64.0;
+                }
+                if (!sized) sized = FT_Set_Pixel_Sizes(f, 0, 128) == 0;
+                if (sized && FT_Load_Glyph(f, glyph, FT_LOAD_COLOR | FT_LOAD_RENDER) == 0) {
+                    const FT_Bitmap &image = f->glyph->bitmap;
+                    if (image.pixel_mode == FT_PIXEL_MODE_BGRA && image.width > 0 && image.rows > 0) {
+                        std::vector<unsigned char> rgba(std::size_t{image.width} * image.rows * 4);
+                        for (unsigned y = 0; y < image.rows; ++y) {
+                            const unsigned char *row = image.buffer + static_cast<std::ptrdiff_t>(y) * image.pitch;
+                            for (unsigned x = 0; x < image.width; ++x) {
+                                const unsigned char *bgra = row + x * 4;
+                                unsigned char *out = rgba.data() + (std::size_t{y} * image.width + x) * 4;
+                                const unsigned alpha = bgra[3];
+                                // FreeType's colours are premultiplied; PNG's aren't.
+                                const auto straight = [&](const unsigned c) { return static_cast<unsigned char>(alpha ? std::min(255u, c * 255 / alpha) : 0); };
+                                out[0] = straight(bgra[2]);
+                                out[1] = straight(bgra[1]);
+                                out[2] = straight(bgra[0]);
+                                out[3] = static_cast<unsigned char>(alpha);
+                            }
+                        }
+                        result = rendered{bitmap{png_of(rgba, image.width, image.rows)}, f->glyph->bitmap_left / ppem,
+                                          f->glyph->bitmap_top / ppem, image.width / ppem, image.rows / ppem};
+                    }
+                }
+            }
+            const std::lock_guard lock{guard};
+            return done.emplace(key, result).first->second;
+        }
+
+        // HarfBuzz's font for a face, made once and kept: shaping only reads it.
+        hb_font_t *shaper(const font_face &face) {
+            static std::mutex guard;
+            static std::map<std::pair<std::string, int>, hb_font_t *> fonts;
+            const std::lock_guard lock{guard};
+            const auto key = std::pair{face.file(), face.index()};
+            if (const auto found = fonts.find(key); found != fonts.end()) return found->second;
+            hb_blob_t *blob = hb_blob_create_from_file(face.file().c_str());
+            hb_face_t *made = hb_face_create(blob, static_cast<unsigned>(face.index()));
+            hb_font_t *font = hb_font_create(made); // scaled in font units
+            hb_face_destroy(made);
+            hb_blob_destroy(blob);
+            return fonts.emplace(key, font).first->second;
+        }
+    }
+
+    detail::colour_layout detail::lay_out_colour(const font_face &face, const std::string_view text, const double size) {
+        colour_layout out;
+        hb_font_t *font = shaper(face);
+        const double units = std::max(1u, hb_face_get_upem(hb_font_get_face(font)));
+        hb_buffer_t *buffer = hb_buffer_create();
+        hb_buffer_add_utf8(buffer, text.data(), static_cast<int>(text.size()), 0, static_cast<int>(text.size()));
+        hb_buffer_guess_segment_properties(buffer);
+        hb_shape(font, buffer, nullptr, 0);
+        unsigned count = 0;
+        const hb_glyph_info_t *infos = hb_buffer_get_glyph_infos(buffer, &count);
+        const hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(buffer, &count);
+        double pen = 0;
+        for (unsigned i = 0; i < count; ++i) {
+            const double scale = size / units;
+            if (const auto glyph = render(face, infos[i].codepoint)) {
+                out.glyphs.push_back({glyph->picture, pen + positions[i].x_offset * scale + glyph->left * size,
+                                      -(positions[i].y_offset * scale + glyph->top * size), glyph->width * size, glyph->height * size, pen});
+            }
+            pen += positions[i].x_advance * scale;
+        }
+        hb_buffer_destroy(buffer);
+        out.advance = pen;
+        return out;
+    }
 }
+
