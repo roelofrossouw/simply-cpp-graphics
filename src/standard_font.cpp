@@ -12,7 +12,7 @@
 
 namespace sc {
     namespace {
-        struct face {
+        struct metrics {
             const char *name;
             int ascender, descender, cap_height, x_height;
             std::array<short, 224> widths; // characters 32 to 255
@@ -24,7 +24,8 @@ namespace sc {
             return widths;
         }
 
-        const std::array<face, 12> faces{{
+        // In the order of standard_font::face.
+        const std::array<metrics, 12> table{{
             {"Helvetica", 718, 207, 718, 523, {278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584,0,556,0,222,556,333,1000,556,556,333,1000,667,333,1000,0,611,0,0,222,222,333,333,350,556,1000,333,1000,500,333,944,0,500,667,278,333,556,556,556,556,260,556,333,737,370,556,584,333,737,552,400,549,333,333,333,576,537,333,333,333,365,556,834,834,834,611,667,667,667,667,667,667,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,500,556,556,556,556,278,278,278,278,556,556,556,556,556,556,556,549,611,556,556,556,556,500,556,500}},
             {"Helvetica-Bold", 718, 207, 718, 532, {278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584,0,556,0,278,556,500,1000,556,556,333,1000,667,333,1000,0,611,0,0,278,278,500,500,350,556,1000,333,1000,556,333,944,0,500,667,278,333,556,556,556,556,280,556,333,737,370,556,584,333,737,552,400,549,333,333,333,576,556,333,333,333,365,556,834,834,834,611,722,722,722,722,722,722,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,556,556,556,556,556,278,278,278,278,611,611,611,611,611,611,611,549,611,611,611,611,611,556,611,556}},
             {"Helvetica-Oblique", 718, 207, 718, 523, {278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584,0,556,0,222,556,333,1000,556,556,333,1000,667,333,1000,0,611,0,0,222,222,333,333,350,556,1000,333,1000,500,333,944,0,500,667,278,333,556,556,556,556,260,556,333,737,370,556,584,333,737,552,400,549,333,333,333,576,537,333,333,333,365,556,834,834,834,611,667,667,667,667,667,667,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,500,556,556,556,556,278,278,278,278,556,556,556,556,556,556,556,549,611,556,556,556,556,500,556,500}},
@@ -38,6 +39,8 @@ namespace sc {
             {"Courier-Oblique", 629, 157, 562, 426, monospaced()},
             {"Courier-BoldOblique", 629, 157, 562, 439, monospaced()},
         }};
+
+        const metrics &entry(const standard_font::face which) { return table[static_cast<std::size_t>(which)]; }
 
         std::string lower(std::string text) {
             std::ranges::transform(text, text.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -55,6 +58,16 @@ namespace sc {
         }
     }
 
+    standard_font::standard_font(const face which) : face_(which), name_(entry(which).name) {}
+
+    std::string_view standard_font::name(const face which) { return entry(which).name; }
+
+    std::optional<standard_font::face> standard_font::named(const std::string_view pdf_name) {
+        for (const auto which: faces)
+            if (name(which) == pdf_name) return which;
+        return std::nullopt;
+    }
+
     std::optional<standard_font> standard_font::of(const font &spec) {
         const auto family = lower(spec.family);
         int base;
@@ -62,10 +75,7 @@ namespace sc {
         else if (family == "times" || family == "times-roman" || family == "times new roman") base = 4;
         else if (family == "courier" || family == "courier new") base = 8;
         else return std::nullopt;
-        standard_font found;
-        found.face_ = base + (spec.weight >= 600 ? 1 : 0) + (spec.italic ? 2 : 0);
-        found.name_ = faces[found.face_].name;
-        return found;
+        return standard_font{faces[static_cast<std::size_t>(base + (spec.weight >= 600 ? 1 : 0) + (spec.italic ? 2 : 0))]};
     }
 
     std::optional<char> standard_font::encode(const char32_t c) {
@@ -83,16 +93,16 @@ namespace sc {
     double standard_font::width(const std::string_view text, const double size) const {
         double units = 0;
         for (std::size_t i = 0; i < text.size();) {
-            if (const auto byte = encode(next(text, i))) units += faces[face_].widths[static_cast<unsigned char>(*byte) - 32];
+            if (const auto byte = encode(next(text, i))) units += entry(face_).widths[static_cast<unsigned char>(*byte) - 32];
         }
         return units * size / 1000;
     }
 
-    double standard_font::ascender(const double size) const { return faces[face_].ascender * size / 1000; }
+    double standard_font::ascender(const double size) const { return entry(face_).ascender * size / 1000; }
 
-    double standard_font::descender(const double size) const { return faces[face_].descender * size / 1000; }
+    double standard_font::descender(const double size) const { return entry(face_).descender * size / 1000; }
 
-    double standard_font::cap_height(const double size) const { return faces[face_].cap_height * size / 1000; }
+    double standard_font::cap_height(const double size) const { return entry(face_).cap_height * size / 1000; }
 
-    double standard_font::x_height(const double size) const { return faces[face_].x_height * size / 1000; }
+    double standard_font::x_height(const double size) const { return entry(face_).x_height * size / 1000; }
 }
