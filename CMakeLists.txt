@@ -8,7 +8,7 @@ option(SC_GRAPHICS_BUILD_TESTS "Build simply-cpp-graphics tests" ${PROJECT_IS_TO
 get_sc_version()
 message(STATUS "SimplyCPP ${SC_MODULE} Version: ${SC_VERSION}")
 
-find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.11.0)
+find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.12.0)
 # Through pkg-config: jammy's libtinyxml2-dev has no CMake package. As with sc-redis's hiredis, the
 # library is linked by path so the exported targets don't need pkg-config.
 config_or_install_package(tinyxml2 libtinyxml2-dev tinyxml2)
@@ -30,10 +30,11 @@ endforeach ()
 find_library(SC_GRAPHICS_FONTCONFIG_LIBRARY NAMES fontconfig HINTS ${fontconfig_LIBRARY_DIRS} REQUIRED)
 find_library(SC_GRAPHICS_FREETYPE_LIBRARY NAMES freetype HINTS ${freetype2_LIBRARY_DIRS} REQUIRED)
 
-set(SOURCE_OBJECTS include/font.h include/text.h include/typeface.h include/paint.h include/page.h)
+set(SOURCE_OBJECTS include/font.h include/text.h include/typeface.h include/page.h)
 set(SOURCE_LIBRARIES)
 set(SOURCE_LINK_LIBRARIES)
 
+add_sc_object(paint LINK_LIBRARIES sc::sc-core)
 add_sc_object(canvas LINK_LIBRARIES sc::sc-core PUBLIC_LINK_LIBRARIES sc::sc-core)
 add_sc_object(paragraph LINK_LIBRARIES sc::sc-core)
 # fontconfig and FreeType stay out of the installed header.
@@ -60,7 +61,7 @@ endif ()
 
 add_sc_example(sc-graphics-demo)
 
-# sc::drawing replaced sc::svg in 5.0.0: the engines' demos built against 4.x drew with sc::svg, so
-# they're upgraded with it.
-package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.11.0~)" libtinyxml2-dev libfontconfig-dev libfreetype-dev
-        BREAKS "simply-cpp-image (<< 3.0.1~)" "simply-cpp-pdf (<< 3.0.1~)" "simply-cpp-mupdf (<< 4.0.1~)")
+# sc::fill holds an optional gradient since 5.1.0, so it's bigger: engines (and sc-ai, which draws)
+# built against 5.0 would read it wrong, so they're upgraded with it.
+package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.12.0~)" libtinyxml2-dev libfontconfig-dev libfreetype-dev
+        BREAKS "simply-cpp-image (<< 4.1.0~)" "simply-cpp-pdf (<< 3.0.5~)" "simply-cpp-mupdf (<< 4.0.5~)" "simply-cpp-ai (<< 1.6.13~)")

@@ -130,6 +130,55 @@ int main() {
         CHECK(near(shape_at(badge, 0).bounds(), 15, 10, 20, 20)); // the full rect, within the mask's shape
     }
 
+    SECTION("Linear gradients: in the box or in user space, through gradientTransform, stops by href");
+    {
+        const auto picture = sc::drawing::from_svg(
+            R"svg(<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="100">)svg"
+            R"svg(<defs><linearGradient id="g"><stop offset="0" stop-color="red"/><stop offset="100%" stop-color="blue"/></linearGradient>)svg"
+            R"svg(<linearGradient id="vertical" xlink:href="#g" x2="0" y2="1"/>)svg"
+            R"svg(<linearGradient id="user" xlink:href="#g" gradientUnits="userSpaceOnUse" x2="1" gradientTransform="matrix(0 -50 50 0 0 100)"/></defs>)svg"
+            R"svg(<rect x="100" width="100" height="50" fill="url(#g)"/>)svg"
+            R"svg(<rect y="50" width="100" height="50" fill="url(#vertical)"/>)svg"
+            R"svg(<rect width="50" height="100" fill="url(#user)" fill-opacity="0.5"/></svg>)svg");
+        CHECK_EQ(picture.size(), std::size_t{3});
+        const auto &box = shape_at(picture, 0).appearance.fill().gradient();
+        CHECK(box.has_value());
+        if (box) { // across the rect, left to right
+            CHECK_NEAR(box->offset_of({100, 25}), 0.0, 1e-9);
+            CHECK_NEAR(box->offset_of({200, 0}), 1.0, 1e-9);
+            CHECK(box->colour_at(0) == sc::color::Red);
+        }
+        const auto &down = shape_at(picture, 1).appearance.fill().gradient();
+        CHECK(down.has_value());
+        if (down) { // the stops from #g, top to bottom of its rect
+            CHECK_EQ(down->stops().size(), std::size_t{2});
+            CHECK_NEAR(down->offset_of({30, 50}), 0.0, 1e-9);
+            CHECK_NEAR(down->offset_of({70, 100}), 1.0, 1e-9);
+        }
+        const auto &user = shape_at(picture, 2).appearance.fill().gradient();
+        CHECK(user.has_value());
+        if (user) { // (0..1, 0) through matrix(0 -50 50 0 0 100): from y = 100 up to y = 50
+            CHECK_NEAR(user->offset_of({10, 100}), 0.0, 1e-9);
+            CHECK_NEAR(user->offset_of({40, 50}), 1.0, 1e-9);
+            CHECK_NEAR(user->stops().front().colour.alpha(), 0.5, 1e-12); // fill-opacity on its stops
+        }
+
+        // Written back and read again: the same gradients, in user space.
+        const auto back = sc::drawing::from_svg(picture.to_svg());
+        for (std::size_t i = 0; i < 3; ++i) {
+            const auto &a = shape_at(picture, i).appearance.fill().gradient(), &b = shape_at(back, i).appearance.fill().gradient();
+            CHECK(b.has_value());
+            if (a && b) for (const sc::point p: {sc::point{0, 0}, sc::point{150, 75}}) CHECK_NEAR(b->offset_of(p), a->offset_of(p), 1e-6);
+        }
+
+        // Flipped with the drawing: the colours stay on their parts of the shape.
+        auto flipped = picture;
+        flipped.flip_horizontal();
+        const auto &mirrored = shape_at(flipped, 0).appearance.fill().gradient();
+        if (mirrored) CHECK_NEAR(mirrored->offset_of({100, 25}), 0.0, 1e-9); // the rect is now at 0..100, red at its right
+        if (mirrored) CHECK_NEAR(mirrored->offset_of({0, 25}), 1.0, 1e-9);
+    }
+
     SECTION("Text: a label with its font and fill");
     {
         const auto picture = sc::drawing::from_svg(

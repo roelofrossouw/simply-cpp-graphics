@@ -69,10 +69,11 @@ namespace sc {
         /// colours and opacity, presentation attributes and style="...". Shapes keep their kind
         /// where their transform allows; a mask is read as a clip of its shapes. The page is the
         /// width and height in pixels (units converted), the viewBox fitted into it; else the
-        /// viewBox's size. Not read: gradients (their fallback colour is), patterns, markers,
-        /// filters, stylesheets. Throws std::runtime_error when it isn't SVG.
+        /// viewBox's size. Linear gradients are read (stops, units, gradientTransform, href). Not
+        /// read: radial gradients (their middle colour is), patterns, markers, filters, stylesheets.
+        /// Throws std::runtime_error when it isn't SVG.
         ///
-        /// TODO: gradients, and masks by their luminance rather than as clips.
+        /// TODO: radial gradients, and masks by their luminance rather than as clips.
         [[nodiscard]] static drawing from_svg(std::string_view svg);
 
         /// Reads an SVG file; throws std::runtime_error when it can't be read or isn't SVG.
