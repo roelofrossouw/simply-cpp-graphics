@@ -198,7 +198,7 @@ private:
 ## Building locally
 
 Run `bash scripts/install.sh` to configure, build, test, package, and install.
-Depends on sc-core and tinyxml2 (for reading SVG).
+Depends on sc-core, sc-web (reading SVG as XML, on libxml2), fontconfig and FreeType.
 
 ## Usage
 
