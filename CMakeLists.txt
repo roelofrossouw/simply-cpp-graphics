@@ -30,6 +30,15 @@ endforeach ()
 find_library(SC_GRAPHICS_FONTCONFIG_LIBRARY NAMES fontconfig HINTS ${fontconfig_LIBRARY_DIRS} REQUIRED)
 find_library(SC_GRAPHICS_FREETYPE_LIBRARY NAMES freetype HINTS ${freetype2_LIBRARY_DIRS} REQUIRED)
 
+# These paths go into the exported targets, so not Homebrew's versioned Cellar folder (removed on
+# every upgrade or reinstall, breaking whatever links sc-graphics) but its opt link, which follows.
+foreach (library TINYXML2 FONTCONFIG FREETYPE)
+    set(found "${SC_GRAPHICS_${library}_LIBRARY}")
+    if (found MATCHES "^(.*)/Cellar/([^/]+)/[^/]+/(.*)$" AND EXISTS "${CMAKE_MATCH_1}/opt/${CMAKE_MATCH_2}/${CMAKE_MATCH_3}")
+        set(SC_GRAPHICS_${library}_LIBRARY "${CMAKE_MATCH_1}/opt/${CMAKE_MATCH_2}/${CMAKE_MATCH_3}" CACHE FILEPATH "" FORCE)
+    endif ()
+endforeach ()
+
 set(SOURCE_OBJECTS include/font.h include/text.h include/typeface.h include/page.h)
 set(SOURCE_LIBRARIES)
 set(SOURCE_LINK_LIBRARIES)
@@ -64,4 +73,4 @@ add_sc_example(sc-graphics-demo)
 # sc::fill holds an optional gradient since 5.1.0, so it's bigger: engines (and sc-ai, which draws)
 # built against 5.0 would read it wrong, so they're upgraded with it.
 package_sc_module(DEV_DEPENDS "simply-cpp-dev (>= 1.12.0~)" libtinyxml2-dev libfontconfig-dev libfreetype-dev
-        BREAKS "simply-cpp-image (<< 4.1.0~)" "simply-cpp-pdf (<< 3.0.5~)" "simply-cpp-mupdf (<< 4.0.5~)" "simply-cpp-ai (<< 1.6.13~)")
+        BREAKS "simply-cpp-image (<< 5.0.0~)" "simply-cpp-pdf (<< 3.0.5~)" "simply-cpp-mupdf (<< 4.0.5~)" "simply-cpp-ai (<< 2.0.0~)")
