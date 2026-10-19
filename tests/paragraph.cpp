@@ -27,6 +27,7 @@ namespace {
         void paint_polygon(const sc::polygon &, const sc::appearance &) override {}
         void paint_circle(const sc::circle &, const sc::appearance &) override {}
         void paint_line(const sc::line &, const sc::stroke &) override {}
+        void paint_bitmap(const sc::bitmap &, const sc::transform &) override {}
         void paint_text(const sc::text &sample, const sc::fill &) override { texts.push_back({sample.content, sample.position.x(), sample.position.y()}); }
         double measure_width(const sc::text &sample) override { return sample.content.size() * sample.font.size / 2; }
         double measure_x_height(const sc::font &font) override { return font.size / 2; }

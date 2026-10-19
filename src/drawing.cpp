@@ -33,6 +33,8 @@ namespace sc {
         return within(box, clip);
     }
 
+    rect figure::bounds() const { return within(placement.apply(rect{0, 0, 1, 1}).bounds(), clip); }
+
     bool label::operator==(const label &other) const {
         return text.content == other.text.content && text.position == other.text.position && text.font == other.text.font &&
                fill == other.fill && clip == other.clip;
@@ -47,6 +49,11 @@ namespace sc {
 
     void drawing::add(sc::text text, sc::fill fill, std::optional<path> clip) {
         items_.emplace_back(label{std::move(text), std::move(fill), std::move(clip)});
+    }
+
+    void drawing::add(sc::bitmap picture, const rect &position, std::optional<path> clip) {
+        const auto placement = transform::scale(position.width(), position.height()).then(transform::translate(position.left(), position.top()));
+        items_.emplace_back(figure{std::move(picture), placement, std::move(clip)});
     }
 
     void drawing::add(item thing) { items_.push_back(std::move(thing)); }
@@ -77,6 +84,9 @@ namespace sc {
                 if (const auto &gradient = shape->appearance.fill().gradient())
                     shape->appearance.fill(sc::fill{gradient->transformed(change), shape->appearance.fill().rule()});
                 shape->clip = moved_clip(shape->clip);
+            } else if (auto *image = std::get_if<figure>(&item)) {
+                image->placement = image->placement.then(change);
+                image->clip = moved_clip(image->clip);
             } else {
                 auto &text = std::get<label>(item);
                 // The box the glyphs took, through the transform; the text set again at its corner.
@@ -120,6 +130,10 @@ namespace sc {
     void drawing::paint_rounded_rect(const rounded_rect &shape, const sc::appearance &look) { add(shape, look, innermost(clips_)); }
 
     void drawing::paint_path(const path &shape, const sc::appearance &look) { add(shape, look, innermost(clips_)); }
+
+    void drawing::paint_bitmap(const bitmap &picture, const transform &placement) {
+        items_.emplace_back(figure{picture, placement, innermost(clips_)});
+    }
 
     void drawing::push_clip(const path &shape) { clips_.push_back(shape); }
 

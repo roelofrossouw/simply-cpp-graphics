@@ -1,6 +1,8 @@
 // sc::drawing: reading and writing SVG, bounds, transforms and flips, recording, and what throws.
 #include <drawing.h>
 
+#include <base64.h>
+
 #include "sc_test.h"
 
 #include <cmath>
@@ -281,6 +283,29 @@ int main() {
         sc::drawing fitted;
         fitted.draw(record, sc::rect{0, 0, 50, 50}); // half the size
         CHECK(near(shape_at(fitted, 0).bounds(), 5, 5, 10, 10, 1e-9));
+    }
+
+    SECTION("Figures: raster images placed, moved and written as SVG");
+    {
+        const sc::bitmap dots{sc::base64::decode("iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAAEUlEQVR4nGP4z8DAgMAgyAAAO9gF+4ea2nQAAAAASUVORK5CYII=")};
+        sc::drawing picture{{100, 100}};
+        picture.draw(dots, sc::rect{10, 20, 30, 40}); // recorded as a figure
+        CHECK_EQ(picture.size(), std::size_t{1});
+        CHECK(std::holds_alternative<sc::figure>(picture.items()[0]));
+        CHECK(near(picture.bounds(), 10, 20, 30, 40, 1e-9));
+        picture.flip_horizontal(); // its corners mirrored across the page
+        CHECK(near(picture.bounds(), 60, 20, 30, 40, 1e-9));
+        const auto back = sc::drawing::from_svg(picture.to_svg());
+        CHECK(back == picture);
+
+        // An <image>'s data: URI, fitted into its box (xMidYMid meet) or stretched ("none").
+        const auto read = sc::drawing::from_svg(R"(<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">)"
+                                                R"(<image x="0" y="0" width="60" height="60" href=")" + dots.data_uri() + R"("/>)"
+                                                R"(<image x="0" y="0" width="60" height="60" preserveAspectRatio="none" href=")" + dots.data_uri() + R"("/>)"
+                                                R"(<image href="not-there.png"/></svg>)");
+        CHECK_EQ(read.size(), std::size_t{2});
+        CHECK(near(std::get<sc::figure>(read.items()[0]).bounds(), 0, 10, 60, 40, 1e-9));
+        CHECK(near(std::get<sc::figure>(read.items()[1]).bounds(), 0, 0, 60, 60, 1e-9));
     }
 
     SECTION("Files and mistakes");

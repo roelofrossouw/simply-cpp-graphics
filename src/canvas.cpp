@@ -41,6 +41,11 @@ namespace sc {
         paint_text(sample, fill);
     }
 
+    void canvas::draw(const bitmap &picture, const rect &position) {
+        if (position.width() <= 0 || position.height() <= 0) return;
+        paint_bitmap(picture, transform::scale(position.width(), position.height()).then(transform::translate(position.left(), position.top())));
+    }
+
     void canvas::draw(const path &shape, const sc::appearance &look) {
         if (shape.empty() || !look.visible()) return;
         paint_path(shape, shown(look));
@@ -61,7 +66,9 @@ namespace sc {
         for (const auto &item: picture.items()) {
             std::visit([this](const auto &thing) {
                 if (thing.clip) push_clip(*thing.clip);
-                if constexpr (std::same_as<std::decay_t<decltype(thing)>, drawable>) draw(thing.shape, thing.appearance);
+                using kind = std::decay_t<decltype(thing)>;
+                if constexpr (std::same_as<kind, drawable>) draw(thing.shape, thing.appearance);
+                else if constexpr (std::same_as<kind, figure>) paint_bitmap(thing.bitmap, thing.placement);
                 else draw(thing.text, thing.fill);
                 if (thing.clip) pop_clip();
             }, item);

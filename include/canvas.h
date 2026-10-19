@@ -1,5 +1,6 @@
 #pragma once
 
+#include "bitmap.h"
 #include "font.h"
 #include "paint.h"
 #include "paragraph.h"
@@ -15,6 +16,7 @@
 #include <rect.h>
 #include <rotated_rect.h>
 #include <rounded_rect.h>
+#include <transform.h>
 
 #include <string>
 #include <vector>
@@ -91,6 +93,10 @@ namespace sc {
         ///     canvas.draw(sc::drawing::load_svg("logo.svg"), box);
         void draw(const drawing &picture, const rect &position);
 
+        /// A raster image stretched to fill position, as HTML places one (keep its size()'s aspect
+        /// ratio to keep it undistorted); an empty position draws nothing.
+        void draw(const bitmap &picture, const rect &position);
+
         /// A line of text, its baseline starting at sample.position.
         void draw(const text &sample, const sc::fill &fill = color::Black);
 
@@ -98,6 +104,16 @@ namespace sc {
         /// lines fit as it draws them. Returns what didn't fit the area's height (empty when it all
         /// did), to go on in another area.
         std::string draw(const paragraph &text, const sc::fill &fill = color::Black);
+
+        /// Limits what's drawn to inside shape (by the nonzero rule; a clip rule is planned) until
+        /// the matching pop_clip(); clips nest. A canvas implements them (by default it doesn't clip).
+        ///
+        ///     canvas.push_clip(sc::to_path(sc::circle{{50, 50}, 40}));
+        ///     canvas.draw(photo, box);                      // a round photo
+        ///     canvas.pop_clip();
+        virtual void push_clip(const path &shape);
+
+        virtual void pop_clip();
 
         /// How far sample advances when drawn, in the canvas's units; 0 for empty text or a size of 0.
         [[nodiscard]] double text_width(const text &sample);
@@ -127,15 +143,13 @@ namespace sc {
 
         virtual void paint_text(const text &sample, const sc::fill &fill) = 0;
 
+        /// The image's unit square ((0, 0) its top-left corner, (1, 1) its bottom-right) through
+        /// placement onto the canvas: any affine transform, so a drawing can turn or mirror it.
+        virtual void paint_bitmap(const bitmap &picture, const transform &placement) = 0;
+
         /// By default curves are cut into straight segments and each subpath filled as a polygon
         /// (separately whatever the fill rule: no holes), open ones stroked as lines.
         virtual void paint_path(const path &shape, const sc::appearance &look);
-
-        /// Limits what's painted to inside shape (by the nonzero rule; a clip rule is planned) until
-        /// the matching pop_clip(); clips nest. By default a canvas doesn't clip.
-        virtual void push_clip(const path &shape);
-
-        virtual void pop_clip();
 
         // Text measurements: content isn't empty and the size is above 0.
         virtual double measure_width(const text &sample) = 0;
