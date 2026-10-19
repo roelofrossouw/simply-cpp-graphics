@@ -85,5 +85,30 @@ int main() {
         CHECK(look == sc::appearance::filled(sc::color::Green));
     }
 
+    SECTION("A linear gradient: offsets along it, colours between its stops");
+    {
+        const sc::linear_gradient across{{0, 0}, {100, 0}, {{1, sc::color::Blue}, {0, sc::color::Red}}}; // stops sorted
+        CHECK(across.stops().front().colour == sc::color::Red);
+        CHECK_NEAR(across.offset_of({50, 999}), 0.5, 1e-12); // the same all down a line across it
+        CHECK_NEAR(across.offset_of({-50, 0}), -0.5, 1e-12);
+        const auto middle = across.colour_at(0.5);
+        CHECK_NEAR(middle.red(), 0.5, 1e-9);
+        CHECK_NEAR(middle.blue(), 0.5, 1e-9);
+        CHECK(across.colour_at(-1) == sc::color::Red); // past the ends, the end colours
+        CHECK(across.colour_at(7) == sc::color::Blue);
+
+        // Through a transform: what was at an offset is still there.
+        const auto t = sc::transform::rotate(90).then(sc::transform::scale(2, 0.5)).then(sc::transform::translate(10, 20));
+        const auto moved = across.transformed(t);
+        for (const sc::point p: {sc::point{25, 7}, sc::point{80, -30}, sc::point{0, 0}})
+            CHECK_NEAR(moved.offset_of(t.apply(p)), across.offset_of(p), 1e-9);
+
+        const sc::fill fill = across; // a gradient converts to a fill
+        CHECK(fill.gradient().has_value());
+        CHECK(fill.visible());
+        CHECK_NEAR(fill.colour().red(), 0.5, 1e-9); // its middle colour stands in
+        CHECK(!(sc::fill{sc::linear_gradient{{0, 0}, {1, 0}, {{0, sc::color::Transparent}}}}).visible());
+    }
+
     TEST_SUMMARY();
 }

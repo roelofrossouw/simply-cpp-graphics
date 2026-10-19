@@ -287,7 +287,8 @@ namespace sc {
 
         // The paint and placement in effect for an element: what it inherits, plus its own.
         struct context {
-            std::optional<color> fill = color{0, 0, 0};
+            std::optional<color> fill = color{0, 0, 0}; // a gradient's middle colour when there's one
+            const tinyxml2::XMLElement *fill_gradient = nullptr; // a <linearGradient> the fill refers to
             fill_rule rule = fill_rule::nonzero;
             std::optional<color> stroke;
             double stroke_width = 1;
@@ -351,11 +352,23 @@ namespace sc {
                 return std::nullopt;
             }
 
-            static std::optional<color> paint(const std::string &value, const std::optional<color> &inherited) {
+            // A fill or stroke: a colour, none, or a gradient. A <linearGradient> comes back in gradient
+            // (when that's given), with its middle colour as the flat one; a radial gradient is that
+            // flat colour (TODO: radial gradients), a pattern its fallback colour, if any.
+            std::optional<color> paint(const std::string &value, const std::optional<color> &inherited,
+                                       const tinyxml2::XMLElement **gradient = nullptr) const {
+                if (gradient) *gradient = nullptr;
                 if (value == "none" || value == "transparent") return std::nullopt;
                 if (value == "inherit") return inherited;
                 if (value == "currentColor") return color{0, 0, 0};
-                if (value.starts_with("url(")) { // a gradient or pattern: its fallback colour, if any
+                if (value.starts_with("url(")) {
+                    if (const auto found = ids_.find(reference(value)); found != ids_.end()) {
+                        const std::string kind = local_name(*found->second);
+                        if (kind == "linearGradient" || kind == "radialGradient") {
+                            if (gradient && kind == "linearGradient") *gradient = found->second;
+                            return linear_gradient{{0, 0}, {1, 0}, stops_of(*found->second)}.colour_at(0.5);
+                        }
+                    }
                     const auto after = trimmed(value.substr(value.find(')') + 1));
                     if (after.empty()) return std::nullopt;
                     return paint(after, inherited);
@@ -368,8 +381,12 @@ namespace sc {
             }
 
             void apply_paint(const tinyxml2::XMLElement &element, context &now) const {
-                if (const auto v = property(element, "fill")) now.fill = paint(*v, now.fill);
-                if (const auto v = property(element, "stroke")) now.stroke = paint(*v, now.stroke);
+                if (const auto v = property(element, "fill")) {
+                    const tinyxml2::XMLElement *gradient = nullptr;
+                    now.fill = paint(*v, now.fill, &gradient);
+                    if (*v != "inherit") now.fill_gradient = gradient;
+                }
+                if (const auto v = property(element, "stroke")) now.stroke = paint(*v, now.stroke); // TODO: gradient strokes
                 if (const auto v = property(element, "fill-rule")) now.rule = *v == "evenodd" ? fill_rule::even_odd : fill_rule::nonzero;
                 if (const auto v = property(element, "stroke-width")) now.stroke_width = number(v->c_str(), now.stroke_width);
                 if (const auto v = property(element, "fill-opacity")) now.fill_opacity = number(v->c_str(), 1);
@@ -406,6 +423,73 @@ namespace sc {
                 const double scale = now.placed.scale_factor();
                 return {now.stroke ? sc::stroke{with_opacity(*now.stroke, now.stroke_opacity * now.opacity), now.stroke_width * scale} : sc::stroke::none(),
                         fills && now.fill ? sc::fill{with_opacity(*now.fill, now.fill_opacity * now.opacity), now.rule} : sc::fill::none()};
+            }
+
+            // A gradient's attribute, from it or the gradients it refers to with href, nearest first.
+            const char *gradient_attribute(const tinyxml2::XMLElement &gradient, const char *name) const {
+                const tinyxml2::XMLElement *at = &gradient;
+                for (int depth = 0; at && depth < 8; ++depth) {
+                    if (const char *value = at->Attribute(name)) return value;
+                    const char *href = at->Attribute("href") ? at->Attribute("href") : at->Attribute("xlink:href");
+                    const auto found = href ? ids_.find(reference(href)) : ids_.end();
+                    at = found == ids_.end() ? nullptr : found->second;
+                }
+                return nullptr;
+            }
+
+            // Its <stop>s, or those of the gradient it refers to with href (the first that has any).
+            std::vector<linear_gradient::stop> stops_of(const tinyxml2::XMLElement &gradient) const {
+                const tinyxml2::XMLElement *at = &gradient;
+                for (int depth = 0; at && depth < 8; ++depth) {
+                    std::vector<linear_gradient::stop> stops;
+                    for (auto *child = at->FirstChildElement(); child; child = child->NextSiblingElement()) {
+                        if (local_name(*child) != "stop") continue;
+                        const char *offset = child->Attribute("offset");
+                        double where = number(offset);
+                        if (offset && std::string{offset}.find('%') != std::string::npos) where /= 100;
+                        color colour{0, 0, 0};
+                        if (const auto v = property(*child, "stop-color")) {
+                            if (const auto c = paint(*v, colour)) colour = *c;
+                        }
+                        if (const auto v = property(*child, "stop-opacity")) colour = with_opacity(colour, number(v->c_str(), 1));
+                        stops.push_back({where, colour});
+                    }
+                    if (!stops.empty()) return stops;
+                    const char *href = at->Attribute("href") ? at->Attribute("href") : at->Attribute("xlink:href");
+                    const auto found = href ? ids_.find(reference(href)) : ids_.end();
+                    at = found == ids_.end() ? nullptr : found->second;
+                }
+                return {};
+            }
+
+            // A <linearGradient> for a shape drawn so (in its own coordinates, placed by now.placed):
+            // in the shape's bounding box (objectBoundingBox, the default) or in user space, through
+            // gradientTransform. Nothing for a shape without an area to spread it over.
+            std::optional<linear_gradient> gradient_for(const tinyxml2::XMLElement &gradient, const shape &local, const context &now) const {
+                const char *units = gradient_attribute(gradient, "gradientUnits");
+                const bool user_space = units && std::string{units} == "userSpaceOnUse";
+                const auto coordinate = [&](const char *name, const double fallback) {
+                    const char *value = gradient_attribute(gradient, name);
+                    if (!value) return fallback;
+                    double v = number(value);
+                    if (std::string{value}.find('%') != std::string::npos) v /= 100; // of the box (or, in user space, roughly of the page)
+                    return v;
+                };
+                transform frame;
+                if (!user_space) {
+                    const rect box = local.bounds();
+                    if (box.width() <= 0 || box.height() <= 0) return std::nullopt;
+                    frame = transform::scale(box.width(), box.height()).then(transform::translate(box.left(), box.top()));
+                }
+                auto stops = stops_of(gradient);
+                const double opacity = now.fill_opacity * now.opacity;
+                for (auto &stop: stops) stop.colour = with_opacity(stop.colour, opacity);
+                const transform whole = transform_list(gradient_attribute(gradient, "gradientTransform")).then(frame).then(now.placed);
+                try {
+                    return linear_gradient{{coordinate("x1", 0), coordinate("y1", 0)}, {coordinate("x2", 1), coordinate("y2", 0)}, stops}.transformed(whole);
+                } catch (const std::domain_error &) { // a transform that squashes it flat
+                    return std::nullopt;
+                }
             }
 
             // A basic shape or path in the element's own coordinates; nothing for anything else.
@@ -540,7 +624,10 @@ namespace sc {
                     return;
                 }
                 if (const auto found = geometry_of(node, name)) {
-                    const auto appearance = look(now, name != "line");
+                    auto appearance = look(now, name != "line");
+                    if (now.fill_gradient && appearance.fill().visible()) {
+                        if (const auto gradient = gradient_for(*now.fill_gradient, *found, now)) appearance.fill(sc::fill{*gradient, now.rule});
+                    }
                     if (appearance.visible()) into_.add(now.placed.apply(*found), appearance, now.clip);
                 }
             }
@@ -592,10 +679,13 @@ namespace sc {
             return out;
         }
 
-        std::string paint_attributes(const appearance &look) {
+        // gradient_id gives a gradient fill's id in the <defs>.
+        template<typename GradientId>
+        std::string paint_attributes(const appearance &look, GradientId gradient_id) {
             std::string out;
             if (look.fill().visible()) {
-                out += colour_attributes("fill", look.fill().colour());
+                if (look.fill().gradient()) out += attribute("fill", "url(#" + gradient_id(*look.fill().gradient()) + ")");
+                else out += colour_attributes("fill", look.fill().colour());
                 if (look.fill().rule() == fill_rule::even_odd) out += attribute("fill-rule", "evenodd");
             } else {
                 out += attribute("fill", "none");
@@ -674,10 +764,16 @@ namespace sc {
             if (found == clips.end()) found = clips.insert(clips.end(), *clip);
             return attribute("clip-path", "url(#clip" + std::to_string(found - clips.begin() + 1) + ")");
         };
+        std::vector<linear_gradient> gradients; // each written once, as gradient1, ...
+        const auto gradient_id = [&](const linear_gradient &gradient) {
+            auto found = std::find(gradients.begin(), gradients.end(), gradient);
+            if (found == gradients.end()) found = gradients.insert(gradients.end(), gradient);
+            return "gradient" + std::to_string(found - gradients.begin() + 1);
+        };
         std::string body;
         for (const auto &item: items_) {
             if (const auto *shape = std::get_if<drawable>(&item)) {
-                body += "  " + element_of(shape->shape, paint_attributes(shape->appearance) + clip_attribute(shape->clip)) + "\n";
+                body += "  " + element_of(shape->shape, paint_attributes(shape->appearance, gradient_id) + clip_attribute(shape->clip)) + "\n";
             } else {
                 const auto &text = std::get<label>(item);
                 const auto &spec = text.text.font;
@@ -690,10 +786,22 @@ namespace sc {
         }
         std::string out = "<svg xmlns=\"http://www.w3.org/2000/svg\"" + attribute("width", format(frame.width())) +
                           attribute("height", format(frame.height())) + attribute("viewBox", "0 0 " + format(frame.width()) + " " + format(frame.height())) + ">\n";
-        if (!clips.empty()) {
+        if (!clips.empty() || !gradients.empty()) {
             out += "  <defs>\n";
             for (std::size_t i = 0; i < clips.size(); ++i)
                 out += "    <clipPath id=\"clip" + std::to_string(i + 1) + "\"><path" + attribute("d", path_d(clips[i])) + "/></clipPath>\n";
+            for (std::size_t i = 0; i < gradients.size(); ++i) {
+                const auto &gradient = gradients[i];
+                out += "    <linearGradient id=\"gradient" + std::to_string(i + 1) + "\"" + attribute("gradientUnits", "userSpaceOnUse") +
+                       attribute("x1", format(gradient.from().x())) + attribute("y1", format(gradient.from().y())) +
+                       attribute("x2", format(gradient.to().x())) + attribute("y2", format(gradient.to().y())) + ">";
+                for (const auto &stop: gradient.stops()) {
+                    out += "<stop" + attribute("offset", format(stop.offset)) + attribute("stop-color", stop.colour.to_hex());
+                    if (stop.colour.alpha() < 1) out += attribute("stop-opacity", format(stop.colour.alpha()));
+                    out += "/>";
+                }
+                out += "</linearGradient>\n";
+            }
             out += "  </defs>\n";
         }
         return out + body + "</svg>\n";

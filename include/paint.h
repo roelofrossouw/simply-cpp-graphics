@@ -1,6 +1,11 @@
 #pragma once
 
 #include <color.h>
+#include <point.h>
+#include <transform.h>
+
+#include <optional>
+#include <vector>
 
 namespace sc {
     // Transparency is the colour's alpha, for strokes, fills and text alike: 0 leaves the part out.
@@ -44,12 +49,52 @@ namespace sc {
         double width_ = 1;
     };
 
-    /// How a shape's inside is painted: a colour and a fill rule. None (transparent) by default.
+    /// A colour changing along a line, from (offset 0) to (offset 1), in the canvas's coordinates;
+    /// along any line across it the colour is the same, and past the ends the end colours carry on.
+    ///
+    ///     sc::linear_gradient green{{0, 100}, {0, 0}, {{0, sc::color{"#20b038"}}, {1, sc::color{"#60d66a"}}}};
+    ///     canvas.draw(bubble, sc::appearance::filled(green));
+    class linear_gradient {
+    public:
+        struct stop {
+            double offset; // 0 to 1
+            sc::color colour;
+
+            bool operator==(const stop &) const = default;
+        };
+
+        /// The stops in order of offset (each kept within 0 to 1); none is black.
+        linear_gradient(point from, point to, std::vector<stop> stops);
+
+        [[nodiscard]] point from() const { return from_; }
+        [[nodiscard]] point to() const { return to_; }
+        [[nodiscard]] const std::vector<stop> &stops() const { return stops_; }
+
+        /// How far along at is: 0 at from, 1 at to, below 0 or above 1 past them.
+        [[nodiscard]] double offset_of(const point &at) const;
+
+        /// The colour at offset, between the stops either side of it (each channel and alpha
+        /// straight across).
+        [[nodiscard]] sc::color colour_at(double offset) const;
+
+        /// Through a transform, any: its colour lines stay parallel.
+        [[nodiscard]] linear_gradient transformed(const transform &change) const;
+
+        bool operator==(const linear_gradient &) const = default;
+
+    private:
+        point from_, to_;
+        std::vector<stop> stops_;
+    };
+
+    /// How a shape's inside is painted: a colour or a linear gradient, and a fill rule. None
+    /// (transparent) by default.
     ///
     ///     canvas.draw(ring, sc::appearance::filled(sc::fill{sc::color::Blue, sc::fill_rule::even_odd}));
     ///
-    /// Planned (an engine that can't do one fills with the nearest flat colour): gradients,
-    /// patterns and images.
+    /// sc-image draws gradients; sc-pdf and sc-mupdf fill with the gradient's middle colour for now.
+    /// Planned: radial gradients, patterns and images (an engine that can't do one fills with the
+    /// nearest flat colour).
     class fill {
     public:
         /// None: transparent.
@@ -57,6 +102,11 @@ namespace sc {
 
         /// A colour converts to a fill, by the nonzero rule.
         fill(const sc::color &colour, const fill_rule rule = fill_rule::nonzero) : colour_(colour), rule_(rule) {
+        }
+
+        /// So does a gradient. Its middle colour stands in on a canvas that can't draw gradients.
+        fill(const linear_gradient &gradient, const fill_rule rule = fill_rule::nonzero)
+            : colour_(gradient.colour_at(0.5)), rule_(rule), gradient_(gradient) {
         }
 
         /// No inside.
@@ -67,13 +117,22 @@ namespace sc {
         /// For paths; a canvas that flattens paths into separate polygons ignores it.
         [[nodiscard]] fill_rule rule() const { return rule_; }
 
-        [[nodiscard]] bool visible() const { return colour_.alpha() > 0; }
+        /// The gradient, if it's one.
+        [[nodiscard]] const std::optional<linear_gradient> &gradient() const { return gradient_; }
+
+        [[nodiscard]] bool visible() const {
+            if (!gradient_) return colour_.alpha() > 0;
+            for (const auto &stop: gradient_->stops())
+                if (stop.colour.alpha() > 0) return true;
+            return false;
+        }
 
         bool operator==(const fill &) const = default;
 
     private:
         sc::color colour_{0, 0, 0, 0}; // transparent
         fill_rule rule_ = fill_rule::nonzero;
+        std::optional<linear_gradient> gradient_;
     };
 
     /// How a shape looks: a stroke for its outline (black, 1 wide) and a fill for its inside (none).

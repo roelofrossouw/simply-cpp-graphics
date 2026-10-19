@@ -44,8 +44,10 @@ or stroke converts to an outline only, `{stroke, fill}` gives both, and
 `sc::appearance::filled(fill)` the inside only. Transparency is the colour's
 alpha; 0 leaves a part out. A line takes a stroke, text a fill (black by
 default), with its baseline at `text.position`; `text_width()`,
-`text_x_height()` and `text_cap_height()` measure it. Dashes, caps and joins,
-gradients and patterns are planned in `paint.h`.
+`text_x_height()` and `text_cap_height()` measure it. A fill can be an
+`sc::linear_gradient` (stops along a line; sc-image draws it, the PDF engines
+its middle colour for now). Dashes, caps and joins, radial gradients and
+patterns are planned in `paint.h`.
 
 ## Drawings and SVG
 
@@ -70,8 +72,9 @@ Reading SVG covers paths, basic shapes, text, groups, transforms, clip paths,
 `<defs>`/`<use>`, flat colours with opacity and `style="..."`. Shapes keep
 their kind where their transform allows (a moved `<rect>` stays an `sc::rect`,
 a turned one becomes an `sc::rotated_rect`); a mask is read as a clip of its
-shapes. Not read: gradients (their fallback colour is), patterns, markers,
-filters and stylesheets. Writing gives each shape its own element, so a
+shapes; linear gradients are read with their stops, units and transform. Not
+read: radial gradients (their middle colour is), patterns, markers, filters
+and stylesheets. Writing gives each shape its own element, so a
 drawing reads back as it was (a group as its shapes).
 
 A drawing is a canvas too: drawing on it records the primitives (a rect as a

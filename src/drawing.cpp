@@ -74,6 +74,8 @@ namespace sc {
                 const auto &stroke = shape->appearance.stroke();
                 shape->shape = change.apply(shape->shape);
                 shape->appearance.stroke(sc::stroke{stroke.colour(), stroke.width() * scale});
+                if (const auto &gradient = shape->appearance.fill().gradient())
+                    shape->appearance.fill(sc::fill{gradient->transformed(change), shape->appearance.fill().rule()});
                 shape->clip = moved_clip(shape->clip);
             } else {
                 auto &text = std::get<label>(item);
@@ -82,6 +84,7 @@ namespace sc {
                 unclipped.clip.reset();
                 const rect landed = change.apply(unclipped.bounds()).bounds();
                 text.text.font.size *= scale;
+                if (const auto &gradient = text.fill.gradient()) text.fill = sc::fill{gradient->transformed(change), text.fill.rule()};
                 text.text.position = {landed.left(), landed.top() + ascender_of(text.text.font)};
                 text.clip = moved_clip(text.clip);
             }
