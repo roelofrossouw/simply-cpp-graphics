@@ -2,6 +2,8 @@
 // what, and what it leaves out.
 #include <canvas.h>
 
+#include <base64.h>
+
 #include "sc_test.h"
 
 #include <cmath>
@@ -35,6 +37,13 @@ namespace {
 
         void paint_text(const sc::text &sample, const sc::fill &) override {
             calls.push_back("text " + sample.content + " " + sample.font.family);
+        }
+
+        void paint_bitmap(const sc::bitmap &picture, const sc::transform &placement) override {
+            const auto box = placement.apply(sc::rect{0, 0, 1, 1}).bounds();
+            calls.push_back("bitmap " + std::to_string(static_cast<int>(picture.size().width())) + " at " + std::to_string(static_cast<int>(box.left())) +
+                            "," + std::to_string(static_cast<int>(box.top())) + " " + std::to_string(static_cast<int>(box.width())) + "x" +
+                            std::to_string(static_cast<int>(box.height())));
         }
 
         // Half an em per character, x-height half the size, capitals 0.7 of it.
@@ -224,6 +233,15 @@ int main() {
         marks.flip_horizontal(); // still a rect and circles after the flip
         canvas.draw(marks);
         CHECK_EQ(canvas.calls, (std::vector<std::string>{"polygon 4", "circle 2", "line 1", "circle 3"}));
+    }
+
+    SECTION("A bitmap: stretched to its box; an empty box draws nothing");
+    {
+        recording_canvas canvas;
+        const sc::bitmap dots{sc::base64::decode("iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAAEUlEQVR4nGP4z8DAgMAgyAAAO9gF+4ea2nQAAAAASUVORK5CYII=")};
+        canvas.draw(dots, sc::rect{10, 20, 30, 40});
+        canvas.draw(dots, sc::rect{10, 20, 0, 40});
+        CHECK_EQ(canvas.calls, (std::vector<std::string>{"bitmap 3 at 10,20 30x40"}));
     }
 
     SECTION("Fonts");

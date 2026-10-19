@@ -1,5 +1,6 @@
 set(SC_TEST_LINK_LIBRARIES sc-graphics)
 
+add_sc_test(bitmap LABELS unit)
 add_sc_test(canvas LABELS unit)
 add_sc_test(drawing LABELS unit)
 add_sc_test(fonts LABELS unit)

@@ -178,6 +178,10 @@ protected:
                           ", " + sc::console::format(fill.colour()));
     }
 
+    void paint_bitmap(const sc::bitmap &picture, const sc::transform &placement) override {
+        sc::console::note("bitmap " + sc::console::format(picture.size()) + " to " + sc::console::format(placement.apply(sc::rect{0, 0, 1, 1}).bounds()));
+    }
+
     double measure_width(const sc::text &sample) override { return sample.content.size() * sample.font.size / 2; }
     double measure_x_height(const sc::font &font) override { return font.size / 2; }
     double measure_cap_height(const sc::font &font) override { return font.size * 0.7; }

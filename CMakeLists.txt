@@ -38,6 +38,7 @@ set(SOURCE_LIBRARIES)
 set(SOURCE_LINK_LIBRARIES)
 
 add_sc_object(paint LINK_LIBRARIES sc::sc-core)
+add_sc_object(bitmap LINK_LIBRARIES sc::sc-core)
 add_sc_object(canvas LINK_LIBRARIES sc::sc-core PUBLIC_LINK_LIBRARIES sc::sc-core)
 add_sc_object(paragraph LINK_LIBRARIES sc::sc-core)
 # fontconfig and FreeType stay out of the installed header.

@@ -578,6 +578,45 @@ namespace sc {
                 return trimmed(collapsed);
             }
 
+            // An <image> of a PNG or JPEG data: URI, in its box by preserveAspectRatio: stretched
+            // for "none", else fitted ("meet") or filling it and clipped ("slice"), aligned by
+            // xMin/xMid/xMax and YMin/YMid/YMax.
+            // TODO: images in files (from_svg has no folder to find them in), opacity.
+            void image(const web::element &node, const context &now) {
+                const auto href = href_of(node);
+                if (!href || !href->starts_with("data:")) return;
+                std::optional<bitmap> picture;
+                try {
+                    picture = bitmap::from_data_uri(*href);
+                } catch (const std::runtime_error &) {
+                    return; // not a PNG or JPEG: left out, as a viewer leaves out what it can't show
+                }
+                const sc::size natural = picture->size();
+                const rect box{number(node["x"]), number(node["y"]), length(node.attribute("width", "")), length(node.attribute("height", ""))};
+                const double width = box.width() > 0 ? box.width() : natural.width();
+                const double height = box.height() > 0 ? box.height() : natural.height();
+                const rect frame{box.left(), box.top(), width, height};
+                const std::string_view aspect = node.attribute("preserveAspectRatio", "xMidYMid meet");
+                rect placed = frame;
+                std::optional<path> clip = now.clip;
+                if (!aspect.starts_with("none")) {
+                    const bool slice = aspect.find("slice") != std::string_view::npos;
+                    const double scale = slice ? std::max(width / natural.width(), height / natural.height())
+                                               : std::min(width / natural.width(), height / natural.height());
+                    const auto along = [&](const std::string_view low, const std::string_view high) {
+                        if (aspect.find(low) != std::string_view::npos) return 0.0;
+                        if (aspect.find(high) != std::string_view::npos) return 1.0;
+                        return 0.5;
+                    };
+                    placed = rect{frame.left() + (width - natural.width() * scale) * along("xMin", "xMax"),
+                                  frame.top() + (height - natural.height() * scale) * along("YMin", "YMax"),
+                                  natural.width() * scale, natural.height() * scale};
+                    if (slice && !clip) clip = now.placed.apply(to_path(frame));
+                }
+                const auto placement = transform::scale(placed.width(), placed.height()).then(transform::translate(placed.left(), placed.top())).then(now.placed);
+                into_.add(figure{std::move(*picture), placement, clip});
+            }
+
             void element(const web::element &node, const context &inherited) {
                 const auto name = node.name();
                 if (name == "defs" || name == "clipPath" || name == "symbol" || name == "title" || name == "desc" || name == "metadata" ||
@@ -615,6 +654,10 @@ namespace sc {
                         sample.position.x(sample.position.x() - (now.anchor == "middle" ? width / 2 : width));
                     }
                     into_.add(std::move(sample), sc::fill{with_opacity(*now.fill, now.fill_opacity * now.opacity)}, now.clip);
+                    return;
+                }
+                if (name == "image") {
+                    image(node, now);
                     return;
                 }
                 if (const auto found = geometry_of(node)) {
@@ -772,6 +815,12 @@ namespace sc {
         for (const auto &item: items_) {
             if (const auto *shape = std::get_if<drawable>(&item)) {
                 body += "  " + element_of(shape->shape, paint_attributes(shape->appearance, gradient_id) + clip_attribute(shape->clip)) + "\n";
+            } else if (const auto *image = std::get_if<figure>(&item)) {
+                const auto &m = image->placement;
+                body += "  <image" + attribute("width", "1") + attribute("height", "1") + attribute("preserveAspectRatio", "none") +
+                        attribute("transform", "matrix(" + format(m.a()) + " " + format(m.b()) + " " + format(m.c()) + " " + format(m.d()) + " " +
+                                               format(m.e()) + " " + format(m.f()) + ")") +
+                        clip_attribute(image->clip) + attribute("href", image->bitmap.data_uri()) + "/>\n";
             } else {
                 const auto &text = std::get<label>(item);
                 const auto &spec = text.text.font;

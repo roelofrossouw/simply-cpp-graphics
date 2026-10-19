@@ -40,7 +40,20 @@ namespace sc {
         bool operator==(const label &other) const;
     };
 
-    /// A picture as data: a page size and its items in order, drawables and labels. Draw it on any
+    /// A raster image in a drawing: its unit square ((0, 0) its top-left corner, (1, 1) its
+    /// bottom-right) through placement, so it moves, turns and mirrors as shapes do.
+    struct figure {
+        sc::bitmap bitmap;
+        sc::transform placement;
+        std::optional<path> clip;
+
+        /// Where its corners land, within the clip's bounds.
+        [[nodiscard]] rect bounds() const;
+
+        bool operator==(const figure &) const = default;
+    };
+
+    /// A picture as data: a page size and its items in order, drawables, labels and figures. Draw it on any
     /// canvas, transform or flip it as a whole, read or write it as SVG. It's a canvas too: drawing on
     /// it records what's drawn, to measure, flip or replay later.
     ///
@@ -52,7 +65,7 @@ namespace sc {
     ///     badge.save_svg("badge.svg");
     class drawing : public canvas {
     public:
-        using item = std::variant<drawable, label>;
+        using item = std::variant<drawable, label, figure>;
 
         /// Empty, with no page: its bounds() stand in for one.
         drawing() = default;
@@ -69,7 +82,8 @@ namespace sc {
         /// colours and opacity, presentation attributes and style="...". Shapes keep their kind
         /// where their transform allows; a mask is read as a clip of its shapes. The page is the
         /// width and height in pixels (units converted), the viewBox fitted into it; else the
-        /// viewBox's size. Linear gradients are read (stops, units, gradientTransform, href). Not
+        /// viewBox's size. Linear gradients are read (stops, units, gradientTransform, href), and
+        /// images that are PNG or JPEG data: URIs (preserveAspectRatio too). Not
         /// read: radial gradients (their middle colour is), patterns, markers, filters, stylesheets.
         /// Throws std::runtime_error when it isn't SVG.
         ///
@@ -79,7 +93,8 @@ namespace sc {
         /// Reads an SVG file; throws std::runtime_error when it can't be read or isn't SVG.
         [[nodiscard]] static drawing load_svg(const std::filesystem::path &file);
 
-        /// As SVG, each shape its own element (a rotated_rect a rotated <rect>, a group a <g>), so
+        /// As SVG, each shape its own element (a rotated_rect a rotated <rect>, a group a <g>, a
+        /// figure an <image> of a data: URI), so
         /// from_svg() reads it back the same, a group as its shapes.
         [[nodiscard]] std::string to_svg() const;
 
@@ -97,6 +112,9 @@ namespace sc {
         /// Adds a line of text, black by default.
         void add(sc::text text, sc::fill fill = sc::color{0, 0, 0}, std::optional<path> clip = {});
 
+        /// Adds a raster image stretched to fill position.
+        void add(sc::bitmap picture, const rect &position, std::optional<path> clip = {});
+
         void add(item thing);
 
         [[nodiscard]] const std::vector<item> &items() const { return items_; }
@@ -107,8 +125,8 @@ namespace sc {
         /// The area its items cover together; an empty rect when it has none.
         [[nodiscard]] rect bounds() const;
 
-        /// Every shape and clip through the transform, outlines and text sizes scaled with it; a
-        /// label moves to where its box lands, its glyphs not mirrored or turned. The page stays.
+        /// Every shape, figure and clip through the transform, outlines and text sizes scaled with
+        /// it; a label moves to where its box lands, its glyphs not mirrored or turned. The page stays.
         drawing &apply(const transform &change);
 
         /// Mirrored about the middle of its page (of its bounds when it has none).
@@ -116,6 +134,11 @@ namespace sc {
         drawing &flip_vertical();
 
         bool operator==(const drawing &other) const { return page_ == other.page_ && items_ == other.items_; }
+
+        /// Recorded with what's drawn after it (the innermost clip only, while clips nest).
+        void push_clip(const path &shape) override;
+
+        void pop_clip() override;
 
     protected:
         // Recording: each primitive becomes an item, inside the innermost clip pushed.
@@ -131,9 +154,7 @@ namespace sc {
 
         void paint_path(const path &shape, const sc::appearance &look) override;
 
-        void push_clip(const path &shape) override;
-
-        void pop_clip() override;
+        void paint_bitmap(const bitmap &picture, const transform &placement) override;
 
         // By the font's measurements (font.h), as sc-pdf and sc-mupdf measure.
         double measure_width(const text &sample) override;
