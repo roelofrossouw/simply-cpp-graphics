@@ -35,8 +35,19 @@ void label(sc::canvas &on, const sc::rect &box, const std::string &name) {
     on.draw(caption);
 
     on.draw(sc::drawing::load_svg("logo.svg"), box);                // fitted into box, centred
+    on.draw(sc::bitmap::load("photo.jpg"), box);                    // stretched to fill box
+
+    on.push_clip(sc::to_path(sc::circle{box.center(), 20}));         // only inside the circle
+    on.draw(sc::bitmap::load("face.png"), box);
+    on.pop_clip();
 }
 ```
+
+An `sc::bitmap` is a PNG or JPEG kept as its file (`bitmap::load(file)`,
+`sc::bitmap{bytes}` or `bitmap::from_data_uri(uri)`), its size read from its
+header: PDFs embed it as it is, an `sc::image` decodes it, an `sc::drawing`
+keeps it as a figure (an SVG `<image>` with a data: URI). `push_clip()` and
+`pop_clip()` limit what's drawn to inside a path until popped; clips nest.
 
 An `sc::appearance` is an `sc::stroke` (colour and width; black, 1 wide by
 default) and an `sc::fill` (colour and fill rule; none by default). A colour
@@ -144,7 +155,8 @@ to them, leaving out empty shapes and invisible strokes and fills (passed as
 `none()`):
 
 - required: `paint_polygon`, `paint_circle` (an `sc::appearance`),
-  `paint_line` (an `sc::stroke`), `paint_text` (an `sc::fill`), and
+  `paint_line` (an `sc::stroke`), `paint_text` (an `sc::fill`),
+  `paint_bitmap` (a bitmap and the transform placing its unit square), and
   `measure_width`, `measure_x_height`, `measure_cap_height`;
 - optional: `paint_rounded_rect` and `paint_path`, which default to straight
   segments, and `push_clip`/`pop_clip`, which default to not clipping.
