@@ -271,9 +271,6 @@ namespace sc {
             return text.substr(first, text.find_last_not_of(" \t\n\r") - first + 1);
         }
 
-        // The element's name without a namespace prefix ("svg:rect" is "rect").
-        std::string local_name(const web::element &element) { return std::string{element.name()}; }
-
         // Where a <use> or a gradient refers to: href, or SVG 1.1's xlink:href.
         std::optional<std::string_view> href_of(const web::element &element) {
             if (const auto href = element.attribute("href")) return href;
@@ -369,9 +366,9 @@ namespace sc {
                 if (value == "currentColor") return color{0, 0, 0};
                 if (value.starts_with("url(")) {
                     if (const auto found = ids_.find(reference(value)); found != ids_.end()) {
-                        const std::string kind = local_name(found->second);
-                        if (kind == "linearGradient" || kind == "radialGradient") {
-                            if (gradient && kind == "linearGradient") *gradient = found->second;
+                        const auto &used = found->second;
+                        if (used.is("linearGradient") || used.is("radialGradient")) {
+                            if (gradient && used.is("linearGradient")) *gradient = used;
                             return linear_gradient{{0, 0}, {1, 0}, stops_of(found->second)}.colour_at(0.5);
                         }
                     }
@@ -497,7 +494,8 @@ namespace sc {
             }
 
             // A basic shape or path in the element's own coordinates; nothing for anything else.
-            static std::optional<shape> geometry_of(const web::element &element, const std::string &name) {
+            static std::optional<shape> geometry_of(const web::element &element) {
+                const auto name = element.name();
                 const auto at = [&](const char *attribute, const double fallback = 0) { return number(element[attribute], fallback); };
                 if (name == "rect") {
                     const rect box{at("x"), at("y"), at("width"), at("height")};
@@ -549,7 +547,7 @@ namespace sc {
             void collect(const web::element &parent, const transform &placed, path &outline, const int depth) const {
                 if (depth > 16) return;
                 for (const auto child: parent.children()) {
-                    const std::string name = local_name(child);
+                    const auto name = child.name();
                     const transform own = transform_list(child["transform"]).then(placed);
                     if (name == "g") {
                         collect(child, own, outline, depth + 1);
@@ -559,11 +557,11 @@ namespace sc {
                         if (found == ids_.end()) continue;
                         const auto &used = found->second;
                         const transform moved = transform::translate(number(child["x"]), number(child["y"])).then(own);
-                        if (const auto shape = geometry_of(used, local_name(used)))
+                        if (const auto shape = geometry_of(used))
                             outline.append(to_path(transform_list(used["transform"]).then(moved).apply(*shape)));
                         else
                             collect(used, transform_list(used["transform"]).then(moved), outline, depth + 1);
-                    } else if (const auto shape = geometry_of(child, name)) {
+                    } else if (const auto shape = geometry_of(child)) {
                         outline.append(to_path(own.apply(*shape)));
                     }
                 }
@@ -587,7 +585,7 @@ namespace sc {
             }
 
             void element(const web::element &node, const context &inherited) {
-                const std::string name = local_name(node);
+                const auto name = node.name();
                 if (name == "defs" || name == "clipPath" || name == "symbol" || name == "title" || name == "desc" || name == "metadata" ||
                     name == "style" || name == "linearGradient" || name == "radialGradient" || name == "pattern" || name == "marker" ||
                     name == "mask" || name == "filter")
@@ -600,7 +598,7 @@ namespace sc {
                     now.placed = transform::translate(number(node["x"]), number(node["y"])).then(now.placed);
                     apply_paint(node, now);
                     ++depth_;
-                    if (local_name(found->second) == "symbol") children(found->second, now);
+                    if (found->second.is("symbol")) children(found->second, now);
                     else element(found->second, now);
                     --depth_;
                     return;
@@ -625,7 +623,7 @@ namespace sc {
                     into_.add(std::move(sample), sc::fill{with_opacity(*now.fill, now.fill_opacity * now.opacity)}, now.clip);
                     return;
                 }
-                if (const auto found = geometry_of(node, name)) {
+                if (const auto found = geometry_of(node)) {
                     auto appearance = look(now, name != "line");
                     if (now.fill_gradient && appearance.fill().visible()) {
                         if (const auto gradient = gradient_for(*now.fill_gradient, *found, now)) appearance.fill(sc::fill{*gradient, now.rule});
@@ -743,7 +741,7 @@ namespace sc {
             throw std::runtime_error(std::string{"sc::drawing: not SVG ("} + mistake.what() + ")");
         }
         const auto root = document->root();
-        if (local_name(root) != "svg") throw std::runtime_error("sc::drawing: not SVG (the root isn't <svg>)");
+        if (!root.is("svg")) throw std::runtime_error("sc::drawing: not SVG (the root isn't <svg>)");
         drawing result;
         reader{result}.read(root);
         return result;
