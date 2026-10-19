@@ -46,5 +46,21 @@ int main() {
         CHECK_EQ(byte_of(U'é'), 0xE9u);
         CHECK(!sc::standard_font::encode(U'Ω'));
     }
+    SECTION("The faces as an enum: by face, by PDF name, every one");
+    {
+        const sc::standard_font bold{sc::standard_font::face::helvetica_bold};
+        CHECK_EQ(bold.name(), std::string{"Helvetica-Bold"});
+        CHECK(bold.which() == sc::standard_font::face::helvetica_bold);
+        CHECK_EQ(bold.width("W", 1000), 944.0); // Adobe's width
+        CHECK_EQ(std::string{sc::standard_font::name(sc::standard_font::face::times_bold_italic)}, std::string{"Times-BoldItalic"});
+        CHECK(sc::standard_font::named("Courier-Oblique") == sc::standard_font::face::courier_oblique);
+        CHECK(!sc::standard_font::named("courier-oblique")); // PDF names are exact
+        CHECK(!sc::standard_font::named("Arial"));
+        CHECK_EQ(sc::standard_font::faces.size(), std::size_t{12});
+        for (const auto which: sc::standard_font::faces) CHECK(sc::standard_font::named(sc::standard_font::name(which)) == which);
+        CHECK(sc::standard_font::of(sc::font{"Arial", 12, 700})->which() == sc::standard_font::face::helvetica_bold);
+        CHECK(sc::standard_font::of(sc::font{"Times New Roman", 12, 400, true})->which() == sc::standard_font::face::times_italic);
+    }
+
     TEST_SUMMARY();
 }
