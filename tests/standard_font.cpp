@@ -7,13 +7,18 @@
 #include <string>
 
 int main() {
+    // name() and encode()'s results are taken out of the optional first: CHECK_EQ keeps a
+    // reference to what it compares, which a temporary optional's member doesn't outlive.
+    const auto name_of = [](const sc::font &spec) { return std::string{sc::standard_font::of(spec)->name()}; };
+    const auto byte_of = [](const char32_t c) { return static_cast<unsigned char>(*sc::standard_font::encode(c)); };
+
     SECTION("Families to built-in fonts, by weight and slant");
     {
-        CHECK_EQ(sc::standard_font::of(sc::font{"Helvetica"})->name(), std::string{"Helvetica"});
-        CHECK_EQ(sc::standard_font::of(sc::font{"arial", 12, 700})->name(), std::string{"Helvetica-Bold"});
-        CHECK_EQ(sc::standard_font::of(sc::font{"Times New Roman", 12, 400, true})->name(), std::string{"Times-Italic"});
-        CHECK_EQ(sc::standard_font::of(sc::font{"Times", 12, 700, true})->name(), std::string{"Times-BoldItalic"});
-        CHECK_EQ(sc::standard_font::of(sc::font{"Courier New", 12, 400, true})->name(), std::string{"Courier-Oblique"});
+        CHECK_EQ(name_of(sc::font{"Helvetica"}), std::string{"Helvetica"});
+        CHECK_EQ(name_of(sc::font{"arial", 12, 700}), std::string{"Helvetica-Bold"});
+        CHECK_EQ(name_of(sc::font{"Times New Roman", 12, 400, true}), std::string{"Times-Italic"});
+        CHECK_EQ(name_of(sc::font{"Times", 12, 700, true}), std::string{"Times-BoldItalic"});
+        CHECK_EQ(name_of(sc::font{"Courier New", 12, 400, true}), std::string{"Courier-Oblique"});
         CHECK(!sc::standard_font::of(sc::font{"DejaVu Sans"}));
         CHECK(!sc::standard_font::of(sc::font{"sans-serif"})); // generic: the caller decides
     }
@@ -36,9 +41,9 @@ int main() {
 
     SECTION("Windows-1252");
     {
-        CHECK_EQ(*sc::standard_font::encode(U'A'), 'A');
-        CHECK_EQ(static_cast<unsigned char>(*sc::standard_font::encode(U'€')), 0x80u);
-        CHECK_EQ(static_cast<unsigned char>(*sc::standard_font::encode(U'é')), 0xE9u);
+        CHECK_EQ(byte_of(U'A'), static_cast<unsigned char>('A'));
+        CHECK_EQ(byte_of(U'€'), 0x80u);
+        CHECK_EQ(byte_of(U'é'), 0xE9u);
         CHECK(!sc::standard_font::encode(U'Ω'));
     }
     TEST_SUMMARY();
