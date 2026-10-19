@@ -10,7 +10,7 @@ message(STATUS "SimplyCPP ${SC_MODULE} Version: ${SC_VERSION}")
 
 find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.12.0)
 # SVG is read as XML by sc-web (libxml2).
-find_or_install_package(sc-web simply-cpp-web-dev simply-cpp-web 1.2.0)
+find_or_install_package(sc-web simply-cpp-web-dev simply-cpp-web 1.4.0)
 # sc::font_face: fontconfig finds the font, FreeType reads it. Through pkg-config too, linked by path.
 config_or_install_package(fontconfig libfontconfig-dev fontconfig)
 config_or_install_package(freetype2 libfreetype-dev freetype)
@@ -66,6 +66,6 @@ add_sc_example(sc-graphics-demo)
 
 # sc::fill holds an optional gradient since 5.1.0, so it's bigger: engines (and sc-ai, which draws)
 # built against 5.0 would read it wrong, so they're upgraded with it.
-package_sc_module(DEPENDS "simply-cpp-web (>= 1.2.0~)"
-        DEV_DEPENDS "simply-cpp-dev (>= 1.12.0~)" "simply-cpp-web-dev (>= 1.2.0~)" libfontconfig-dev libfreetype-dev
+package_sc_module(DEPENDS "simply-cpp-web (>= 1.4.0~)"
+        DEV_DEPENDS "simply-cpp-dev (>= 1.12.0~)" "simply-cpp-web-dev (>= 1.4.0~)" libfontconfig-dev libfreetype-dev
         BREAKS "simply-cpp-image (<< 5.0.0~)" "simply-cpp-pdf (<< 3.0.5~)" "simply-cpp-mupdf (<< 4.0.5~)" "simply-cpp-ai (<< 2.0.0~)")
