@@ -66,7 +66,8 @@ namespace sc {
             draw_line(line(shape), stroke);
         }
 
-        /// A path of lines and curves; open subpaths are only stroked.
+        /// A path of lines and curves; an open subpath is filled as if closed (as SVG and PDF fill it)
+        /// and stroked open.
         void draw(const path &shape, const sc::appearance &look = {});
 
         /// Any other sc::geometry (a shape of your own: bounds() and to_path()), drawn as its path.
@@ -126,8 +127,8 @@ namespace sc {
 
         virtual void paint_text(const text &sample, const sc::fill &fill) = 0;
 
-        /// By default curves are cut into straight segments, each closed subpath a polygon (filled
-        /// separately whatever the fill rule: no holes) and open ones lines.
+        /// By default curves are cut into straight segments and each subpath filled as a polygon
+        /// (separately whatever the fill rule: no holes), open ones stroked as lines.
         virtual void paint_path(const path &shape, const sc::appearance &look);
 
         /// Limits what's painted to inside shape (by the nonzero rule; a clip rule is planned) until
