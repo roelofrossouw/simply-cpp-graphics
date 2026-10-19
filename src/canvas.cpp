@@ -84,9 +84,12 @@ namespace sc {
         for (const auto &[points, closed]: shape.flattened()) {
             if (closed) {
                 paint_polygon(points, look);
-            } else if (look.stroke().visible()) {
-                for (std::size_t i = 1; i < points.size(); ++i) paint_line(line{points[i - 1], points[i]}, look.stroke());
+                continue;
             }
+            // An open subpath is filled as if closed (as SVG and PDF fill it), and stroked open.
+            if (look.fill().visible() && points.size() > 2) paint_polygon(points, appearance::filled(look.fill()));
+            if (look.stroke().visible())
+                for (std::size_t i = 1; i < points.size(); ++i) paint_line(line{points[i - 1], points[i]}, look.stroke());
         }
     }
 

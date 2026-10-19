@@ -169,6 +169,11 @@ int main() {
         canvas.draw(open, sc::stroke{sc::color::Black, 2});
         CHECK_LT(size_t{3}, canvas.calls.size()); // an open curve: short lines
         CHECK_EQ(canvas.calls.back(), std::string{"line 2"});
+        canvas.calls.clear();
+        canvas.draw(open, {sc::stroke{sc::color::Black, 2}, sc::color::Red}); // with a fill: filled as if closed, stroked open
+        CHECK(!canvas.calls.empty() && canvas.calls.front().starts_with("polygon"));
+        CHECK(canvas.last_fill.colour() == sc::color::Red);
+        CHECK_EQ(canvas.calls.back(), std::string{"line 2"});
 
         const auto badge = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">)svg"
                                                  R"svg(<rect width="200" height="100" fill="#ff0000"/></svg>)svg");
