@@ -1,5 +1,6 @@
 #pragma once
 
+#include <distance.h>
 #include <size.h>
 
 #include <algorithm>
@@ -9,22 +10,26 @@
 #include <string_view>
 
 namespace sc {
-    /// Paper sizes for the PDF engines (sc-pdf, sc-mupdf), portrait in points (1/72 inch): A3 842x1191,
-    /// A4 595x842, A5 420x595, Letter 612x792, Legal 612x1008.
+    /// Paper sizes for the PDF engines (sc-pdf, sc-mupdf, sc-pdflite): ISO's in whole millimetres as
+    /// ISO 216 has them (A3 297 x 420, A4 210 x 297, A5 148 x 210 mm), Letter and Legal in inches
+    /// (8.5 x 11 and 8.5 x 14). In points (1/72 inch) the ISO sizes have fractions: A4 is
+    /// 595.276 x 841.89.
     enum class page_size { A3, A4, A5, letter, legal };
 
     enum class orientation { portrait, landscape };
 
     /// A page's width and height in points; landscape swaps them.
     ///
-    ///     sc::pdf pdf{"wide.pdf", sc::page_size::A3, sc::orientation::landscape};   // 1191 x 842
+    ///     sc::pdf pdf{"wide.pdf", sc::page_size::A3, sc::orientation::landscape};   // 420 x 297 mm
     inline size page_dimensions(const page_size paper, const orientation turned = orientation::portrait) {
-        size portrait{595, 842};
+        using dist::inch;
+        using dist::mm;
+        size portrait{mm(210), mm(297)};
         switch (paper) {
-            case page_size::A3: portrait = {842, 1191}; break;
-            case page_size::A5: portrait = {420, 595}; break;
-            case page_size::letter: portrait = {612, 792}; break;
-            case page_size::legal: portrait = {612, 1008}; break;
+            case page_size::A3: portrait = {mm(297), mm(420)}; break;
+            case page_size::A5: portrait = {mm(148), mm(210)}; break;
+            case page_size::letter: portrait = {inch(8.5), inch(11)}; break;
+            case page_size::legal: portrait = {inch(8.5), inch(14)}; break;
             case page_size::A4: break;
         }
         return turned == orientation::landscape ? size{portrait.height(), portrait.width()} : portrait;
