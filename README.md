@@ -8,7 +8,7 @@ so the same calls draw on any of them.
 | Engine | Module | Draws with | Partly transparent colours |
 |---|---|---|---|
 | `sc::image` | [sc-image](https://github.com/roelofrossouw/simply-cpp-image) | OpenCV, in pixels | painted opaque |
-| `sc::pdf` | [sc-pdf](https://github.com/roelofrossouw/simply-cpp-pdf) | PDFHummus, in points, as vectors (Apache-2.0) | as they are |
+| `sc::pdf` | [sc-pdf](https://github.com/roelofrossouw/simply-cpp-pdf) | sc-pdflite, in points, as vectors (Apache-2.0) | as they are |
 | `sc::mupdf::writer` | [sc-mupdf](https://github.com/roelofrossouw/simply-cpp-mupdf) | MuPDF, in points, as vectors (AGPL-3.0) | as they are |
 
 **Documentation:** the [simply-cpp wiki](https://github.com/roelofrossouw/simply-cpp/wiki) has a [Graphics guide](https://github.com/roelofrossouw/simply-cpp/wiki/Graphics) and the [sc-graphics reference](https://github.com/roelofrossouw/simply-cpp/wiki/Reference-sc-graphics), plus [getting started](https://github.com/roelofrossouw/simply-cpp/wiki/Getting-Started) for the whole suite.
