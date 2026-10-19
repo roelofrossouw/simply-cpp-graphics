@@ -129,6 +129,21 @@ face->typeface().face(700);             // the closest to bold
 sc::typeface::installed();              // every family on the machine
 ```
 
+### PDF's built-in fonts
+
+`sc::standard_font` (`standard_font.h`) is one of the fonts every PDF reader has, Helvetica, Times
+and Courier in their four styles, with Adobe's metrics (the Core 14 AFM files): widths for the
+Windows-1252 characters they're written in, ascender, descender, cap and x heights. sc-pdf writes
+them without embedding anything, and sc-litehtml lays text out with these metrics.
+
+```cpp
+#include <standard_font.h>
+
+const auto font = sc::standard_font::of(sc::font{"Arial", 12, 700});   // Helvetica-Bold
+font->width("Total", 12);                                              // as every reader draws it
+sc::standard_font::encode(U'€');                                       // 0x80, Windows-1252
+```
+
 ## Paragraphs
 
 ```cpp

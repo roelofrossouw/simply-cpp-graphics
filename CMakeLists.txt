@@ -42,6 +42,7 @@ set(SOURCE_LINK_LIBRARIES)
 
 add_sc_object(paint LINK_LIBRARIES sc::sc-core)
 add_sc_object(bitmap LINK_LIBRARIES sc::sc-core)
+add_sc_object(standard_font LINK_LIBRARIES sc::sc-core)
 add_sc_object(canvas INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src LINK_LIBRARIES sc::sc-core PUBLIC_LINK_LIBRARIES sc::sc-core)
 add_sc_object(paragraph LINK_LIBRARIES sc::sc-core)
 # fontconfig, FreeType and HarfBuzz stay out of the installed headers.
