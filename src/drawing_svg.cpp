@@ -2,7 +2,7 @@
 
 #include "drawing.h"
 
-#include <tinyxml2.h>
+#include <xml.h>
 
 #include <algorithm>
 #include <cctype>
@@ -26,8 +26,11 @@ namespace sc {
         // Numbers one after the other, as SVG writes them: "1,2 3-4.5.5" is 1, 2, 3, -4.5, 0.5.
         class numbers {
         public:
-            explicit numbers(const char *text) : at_(text ? text : "") {
+            explicit numbers(const std::string_view text) : text_(text), at_(text_.c_str()) {
             }
+
+            numbers(const numbers &) = delete;
+            numbers &operator=(const numbers &) = delete;
 
             bool next(double &value) {
                 skip();
@@ -65,10 +68,11 @@ namespace sc {
                 while (*at_ && is_space(*at_)) ++at_;
             }
 
+            std::string text_; // a copy: strtod() wants it to end in a null
             const char *at_;
         };
 
-        double number(const char *text, const double fallback = 0) {
+        double number(const std::string_view text, const double fallback = 0) {
             double value = fallback;
             numbers{text}.next(value);
             return value;
@@ -78,11 +82,11 @@ namespace sc {
 
         // A length in pixels (CSS's 96 per inch): a number with px, pt, pc, mm, cm or in; 0 for a
         // percentage or nothing, which the viewBox then decides.
-        double length(const char *text) {
-            if (!text) return 0;
+        double length(const std::string_view given) {
+            const std::string text{given};
             char *end = nullptr;
-            const double value = std::strtod(text, &end);
-            if (end == text) return 0;
+            const double value = std::strtod(text.c_str(), &end);
+            if (end == text.c_str()) return 0;
             const std::string unit = trimmed(end);
             if (unit.empty() || unit == "px") return value;
             if (unit == "pt") return value * 96 / 72;
@@ -141,7 +145,7 @@ namespace sc {
         }
 
         // SVG path data: every command, relative ones and the shorthands included.
-        path path_data(const char *text) {
+        path path_data(const std::string_view text) {
             path shape;
             numbers in{text};
             point current, start, last_control;
@@ -231,9 +235,9 @@ namespace sc {
         }
 
         // A transform attribute: matrix, translate, scale, rotate, skewX and skewY, applied right to left.
-        transform transform_list(const char *text) {
+        transform transform_list(const std::string_view text) {
             transform combined;
-            if (!text) return combined;
+            if (text.empty()) return combined;
             const std::string list{text};
             std::size_t at = 0;
             while (true) {
@@ -268,10 +272,12 @@ namespace sc {
         }
 
         // The element's name without a namespace prefix ("svg:rect" is "rect").
-        std::string local_name(const tinyxml2::XMLElement &element) {
-            const std::string name = element.Name();
-            const auto colon = name.find(':');
-            return colon == std::string::npos ? name : name.substr(colon + 1);
+        std::string local_name(const web::element &element) { return std::string{element.name()}; }
+
+        // Where a <use> or a gradient refers to: href, or SVG 1.1's xlink:href.
+        std::optional<std::string_view> href_of(const web::element &element) {
+            if (const auto href = element.attribute("href")) return href;
+            return element.attribute("xlink:href");
         }
 
         // What "#id" or "url(#id)" points at.
@@ -288,7 +294,7 @@ namespace sc {
         // The paint and placement in effect for an element: what it inherits, plus its own.
         struct context {
             std::optional<color> fill = color{0, 0, 0}; // a gradient's middle colour when there's one
-            const tinyxml2::XMLElement *fill_gradient = nullptr; // a <linearGradient> the fill refers to
+            std::optional<web::element> fill_gradient; // a <linearGradient> the fill refers to
             fill_rule rule = fill_rule::nonzero;
             std::optional<color> stroke;
             double stroke_width = 1;
@@ -304,14 +310,14 @@ namespace sc {
             explicit reader(drawing &into) : into_(into) {
             }
 
-            void read(const tinyxml2::XMLElement &root) {
+            void read(const web::element &root) {
                 index(root);
                 context start;
-                const char *view_box = root.Attribute("viewBox");
+                const auto view_box = root["viewBox"];
                 std::vector<double> box;
                 numbers in{view_box};
                 for (double value = 0; in.next(value);) box.push_back(value);
-                const double width = length(root.Attribute("width")), height = length(root.Attribute("height"));
+                const double width = length(root["width"]), height = length(root["height"]);
                 if (box.size() == 4 && box[2] > 0 && box[3] > 0) {
                     // The viewBox at the origin, fitted into the width and height when they're given
                     // (scaled evenly and centred, as SVG's preserveAspectRatio does by default).
@@ -331,24 +337,24 @@ namespace sc {
 
         private:
             drawing &into_;
-            std::map<std::string, const tinyxml2::XMLElement *> ids_;
+            std::map<std::string, web::element> ids_;
             int depth_ = 0; // of <use>, against references that loop
 
-            void index(const tinyxml2::XMLElement &element) {
-                if (const char *id = element.Attribute("id")) ids_.emplace(id, &element);
-                for (auto *child = element.FirstChildElement(); child; child = child->NextSiblingElement()) index(*child);
+            void index(const web::element &element) {
+                if (const auto id = element.attribute("id")) ids_.emplace(std::string{*id}, element);
+                for (const auto child: element.children()) index(child);
             }
 
             // A property: from style="..." first (it wins), then the presentation attribute.
-            static std::optional<std::string> property(const tinyxml2::XMLElement &element, const std::string &name) {
-                if (const char *style = element.Attribute("style")) {
-                    std::istringstream declarations{style};
+            static std::optional<std::string> property(const web::element &element, const std::string &name) {
+                if (const auto style = element.attribute("style")) {
+                    std::istringstream declarations{std::string{*style}};
                     for (std::string declaration; std::getline(declarations, declaration, ';');) {
                         const auto colon = declaration.find(':');
                         if (colon != std::string::npos && trimmed(declaration.substr(0, colon)) == name) return trimmed(declaration.substr(colon + 1));
                     }
                 }
-                if (const char *value = element.Attribute(name.c_str())) return trimmed(value);
+                if (const auto value = element.attribute(name)) return trimmed(std::string{*value});
                 return std::nullopt;
             }
 
@@ -356,17 +362,17 @@ namespace sc {
             // (when that's given), with its middle colour as the flat one; a radial gradient is that
             // flat colour (TODO: radial gradients), a pattern its fallback colour, if any.
             std::optional<color> paint(const std::string &value, const std::optional<color> &inherited,
-                                       const tinyxml2::XMLElement **gradient = nullptr) const {
-                if (gradient) *gradient = nullptr;
+                                       std::optional<web::element> *gradient = nullptr) const {
+                if (gradient) gradient->reset();
                 if (value == "none" || value == "transparent") return std::nullopt;
                 if (value == "inherit") return inherited;
                 if (value == "currentColor") return color{0, 0, 0};
                 if (value.starts_with("url(")) {
                     if (const auto found = ids_.find(reference(value)); found != ids_.end()) {
-                        const std::string kind = local_name(*found->second);
+                        const std::string kind = local_name(found->second);
                         if (kind == "linearGradient" || kind == "radialGradient") {
                             if (gradient && kind == "linearGradient") *gradient = found->second;
-                            return linear_gradient{{0, 0}, {1, 0}, stops_of(*found->second)}.colour_at(0.5);
+                            return linear_gradient{{0, 0}, {1, 0}, stops_of(found->second)}.colour_at(0.5);
                         }
                     }
                     const auto after = trimmed(value.substr(value.find(')') + 1));
@@ -380,37 +386,37 @@ namespace sc {
                 }
             }
 
-            void apply_paint(const tinyxml2::XMLElement &element, context &now) const {
+            void apply_paint(const web::element &element, context &now) const {
                 if (const auto v = property(element, "fill")) {
-                    const tinyxml2::XMLElement *gradient = nullptr;
+                    std::optional<web::element> gradient;
                     now.fill = paint(*v, now.fill, &gradient);
                     if (*v != "inherit") now.fill_gradient = gradient;
                 }
                 if (const auto v = property(element, "stroke")) now.stroke = paint(*v, now.stroke); // TODO: gradient strokes
                 if (const auto v = property(element, "fill-rule")) now.rule = *v == "evenodd" ? fill_rule::even_odd : fill_rule::nonzero;
-                if (const auto v = property(element, "stroke-width")) now.stroke_width = number(v->c_str(), now.stroke_width);
-                if (const auto v = property(element, "fill-opacity")) now.fill_opacity = number(v->c_str(), 1);
-                if (const auto v = property(element, "stroke-opacity")) now.stroke_opacity = number(v->c_str(), 1);
-                if (const auto v = property(element, "opacity")) now.opacity *= number(v->c_str(), 1);
+                if (const auto v = property(element, "stroke-width")) now.stroke_width = number(*v, now.stroke_width);
+                if (const auto v = property(element, "fill-opacity")) now.fill_opacity = number(*v, 1);
+                if (const auto v = property(element, "stroke-opacity")) now.stroke_opacity = number(*v, 1);
+                if (const auto v = property(element, "opacity")) now.opacity *= number(*v, 1);
                 if (const auto v = property(element, "font-family")) {
                     auto family = trimmed(v->substr(0, v->find(','))); // the first of a list
                     family.erase(std::remove(family.begin(), family.end(), '\''), family.end());
                     family.erase(std::remove(family.begin(), family.end(), '"'), family.end());
                     if (!family.empty()) now.lettering.family = family;
                 }
-                if (const auto v = property(element, "font-size")) now.lettering.size = number(v->c_str(), now.lettering.size);
+                if (const auto v = property(element, "font-size")) now.lettering.size = number(*v, now.lettering.size);
                 if (const auto v = property(element, "font-weight")) {
                     if (*v == "bold") now.lettering.weight = 700;
                     else if (*v == "normal") now.lettering.weight = 400;
-                    else now.lettering.weight = static_cast<int>(number(v->c_str(), now.lettering.weight));
+                    else now.lettering.weight = static_cast<int>(number(*v, now.lettering.weight));
                 }
                 if (const auto v = property(element, "font-style")) now.lettering.italic = *v == "italic" || *v == "oblique";
                 if (const auto v = property(element, "text-anchor")) now.anchor = *v;
-                now.placed = transform_list(element.Attribute("transform")).then(now.placed);
+                now.placed = transform_list(element["transform"]).then(now.placed);
                 if (const auto v = property(element, "clip-path"); v && *v != "none") {
-                    if (const auto found = ids_.find(reference(*v)); found != ids_.end()) now.clip = clip_path(*found->second, now.placed);
+                    if (const auto found = ids_.find(reference(*v)); found != ids_.end()) now.clip = clip_path(found->second, now.placed);
                 } else if (const auto mask = property(element, "mask"); mask && *mask != "none") {
-                    if (const auto found = ids_.find(reference(*mask)); found != ids_.end()) now.clip = clip_path(*found->second, now.placed);
+                    if (const auto found = ids_.find(reference(*mask)); found != ids_.end()) now.clip = clip_path(found->second, now.placed);
                 }
             }
 
@@ -426,38 +432,37 @@ namespace sc {
             }
 
             // A gradient's attribute, from it or the gradients it refers to with href, nearest first.
-            const char *gradient_attribute(const tinyxml2::XMLElement &gradient, const char *name) const {
-                const tinyxml2::XMLElement *at = &gradient;
+            std::optional<std::string_view> gradient_attribute(const web::element &gradient, const char *name) const {
+                std::optional<web::element> at = gradient;
                 for (int depth = 0; at && depth < 8; ++depth) {
-                    if (const char *value = at->Attribute(name)) return value;
-                    const char *href = at->Attribute("href") ? at->Attribute("href") : at->Attribute("xlink:href");
-                    const auto found = href ? ids_.find(reference(href)) : ids_.end();
-                    at = found == ids_.end() ? nullptr : found->second;
+                    if (const auto value = at->attribute(name)) return value;
+                    const auto href = href_of(*at);
+                    const auto found = href ? ids_.find(reference(std::string{*href})) : ids_.end();
+                    at = found == ids_.end() ? std::nullopt : std::optional{found->second};
                 }
-                return nullptr;
+                return std::nullopt;
             }
 
             // Its <stop>s, or those of the gradient it refers to with href (the first that has any).
-            std::vector<linear_gradient::stop> stops_of(const tinyxml2::XMLElement &gradient) const {
-                const tinyxml2::XMLElement *at = &gradient;
+            std::vector<linear_gradient::stop> stops_of(const web::element &gradient) const {
+                std::optional<web::element> at = gradient;
                 for (int depth = 0; at && depth < 8; ++depth) {
                     std::vector<linear_gradient::stop> stops;
-                    for (auto *child = at->FirstChildElement(); child; child = child->NextSiblingElement()) {
-                        if (local_name(*child) != "stop") continue;
-                        const char *offset = child->Attribute("offset");
-                        double where = number(offset);
-                        if (offset && std::string{offset}.find('%') != std::string::npos) where /= 100;
+                    for (const auto child: at->children("stop")) {
+                        const auto offset = child.attribute("offset");
+                        double where = number(offset.value_or(""));
+                        if (offset && offset->find('%') != std::string_view::npos) where /= 100;
                         color colour{0, 0, 0};
-                        if (const auto v = property(*child, "stop-color")) {
+                        if (const auto v = property(child, "stop-color")) {
                             if (const auto c = paint(*v, colour)) colour = *c;
                         }
-                        if (const auto v = property(*child, "stop-opacity")) colour = with_opacity(colour, number(v->c_str(), 1));
+                        if (const auto v = property(child, "stop-opacity")) colour = with_opacity(colour, number(*v, 1));
                         stops.push_back({where, colour});
                     }
                     if (!stops.empty()) return stops;
-                    const char *href = at->Attribute("href") ? at->Attribute("href") : at->Attribute("xlink:href");
-                    const auto found = href ? ids_.find(reference(href)) : ids_.end();
-                    at = found == ids_.end() ? nullptr : found->second;
+                    const auto href = href_of(*at);
+                    const auto found = href ? ids_.find(reference(std::string{*href})) : ids_.end();
+                    at = found == ids_.end() ? std::nullopt : std::optional{found->second};
                 }
                 return {};
             }
@@ -465,14 +470,13 @@ namespace sc {
             // A <linearGradient> for a shape drawn so (in its own coordinates, placed by now.placed):
             // in the shape's bounding box (objectBoundingBox, the default) or in user space, through
             // gradientTransform. Nothing for a shape without an area to spread it over.
-            std::optional<linear_gradient> gradient_for(const tinyxml2::XMLElement &gradient, const shape &local, const context &now) const {
-                const char *units = gradient_attribute(gradient, "gradientUnits");
-                const bool user_space = units && std::string{units} == "userSpaceOnUse";
+            std::optional<linear_gradient> gradient_for(const web::element &gradient, const shape &local, const context &now) const {
+                const bool user_space = gradient_attribute(gradient, "gradientUnits") == "userSpaceOnUse";
                 const auto coordinate = [&](const char *name, const double fallback) {
-                    const char *value = gradient_attribute(gradient, name);
+                    const auto value = gradient_attribute(gradient, name);
                     if (!value) return fallback;
-                    double v = number(value);
-                    if (std::string{value}.find('%') != std::string::npos) v /= 100; // of the box (or, in user space, roughly of the page)
+                    double v = number(*value);
+                    if (value->find('%') != std::string_view::npos) v /= 100; // of the box (or, in user space, roughly of the page)
                     return v;
                 };
                 transform frame;
@@ -484,7 +488,7 @@ namespace sc {
                 auto stops = stops_of(gradient);
                 const double opacity = now.fill_opacity * now.opacity;
                 for (auto &stop: stops) stop.colour = with_opacity(stop.colour, opacity);
-                const transform whole = transform_list(gradient_attribute(gradient, "gradientTransform")).then(frame).then(now.placed);
+                const transform whole = transform_list(gradient_attribute(gradient, "gradientTransform").value_or("")).then(frame).then(now.placed);
                 try {
                     return linear_gradient{{coordinate("x1", 0), coordinate("y1", 0)}, {coordinate("x2", 1), coordinate("y2", 0)}, stops}.transformed(whole);
                 } catch (const std::domain_error &) { // a transform that squashes it flat
@@ -493,12 +497,12 @@ namespace sc {
             }
 
             // A basic shape or path in the element's own coordinates; nothing for anything else.
-            static std::optional<shape> geometry_of(const tinyxml2::XMLElement &element, const std::string &name) {
-                const auto at = [&](const char *attribute, const double fallback = 0) { return number(element.Attribute(attribute), fallback); };
+            static std::optional<shape> geometry_of(const web::element &element, const std::string &name) {
+                const auto at = [&](const char *attribute, const double fallback = 0) { return number(element[attribute], fallback); };
                 if (name == "rect") {
                     const rect box{at("x"), at("y"), at("width"), at("height")};
                     if (box.width() <= 0 || box.height() <= 0) return std::nullopt;
-                    const double radius = element.Attribute("rx") ? at("rx") : at("ry"); // rx and ry the same; an ellipse's corners aren't kept
+                    const double radius = element.attribute("rx") ? at("rx") : at("ry"); // rx and ry the same; an ellipse's corners aren't kept
                     if (radius > 0) return shape{rounded_rect{box, radius}};
                     return shape{box};
                 }
@@ -515,7 +519,7 @@ namespace sc {
                 if (name == "line") return shape{line{{at("x1"), at("y1")}, {at("x2"), at("y2")}}};
                 if (name == "polygon" || name == "polyline") {
                     std::vector<point> corners;
-                    numbers in{element.Attribute("points")};
+                    numbers in{element["points"]};
                     for (double x = 0, y = 0; in.next(x) && in.next(y);) corners.emplace_back(x, y);
                     if (corners.size() < 2) return std::nullopt;
                     if (name == "polygon") return shape{polygon{std::move(corners)}};
@@ -524,7 +528,7 @@ namespace sc {
                     return shape{open};
                 }
                 if (name == "path") {
-                    auto data = path_data(element.Attribute("d"));
+                    auto data = path_data(element["d"]);
                     if (data.empty()) return std::nullopt;
                     return shape{std::move(data)};
                 }
@@ -534,46 +538,44 @@ namespace sc {
             // A clipPath's (or mask's) shapes as one path in the drawing's coordinates. A mask is taken
             // as a clip of its shapes, their luminance aside: that's what icon exports (Sketch's) use
             // masks for.
-            std::optional<path> clip_path(const tinyxml2::XMLElement &clip, const transform &placed) const {
+            std::optional<path> clip_path(const web::element &clip, const transform &placed) const {
                 path outline;
-                collect(clip, transform_list(clip.Attribute("transform")).then(placed), outline, 0);
+                collect(clip, transform_list(clip["transform"]).then(placed), outline, 0);
                 if (outline.empty()) return std::nullopt;
                 return outline;
             }
 
             // Every shape under parent, through <g> and <use>, into outline.
-            void collect(const tinyxml2::XMLElement &parent, const transform &placed, path &outline, const int depth) const {
+            void collect(const web::element &parent, const transform &placed, path &outline, const int depth) const {
                 if (depth > 16) return;
-                for (auto *child = parent.FirstChildElement(); child; child = child->NextSiblingElement()) {
-                    const std::string name = local_name(*child);
-                    const transform own = transform_list(child->Attribute("transform")).then(placed);
+                for (const auto child: parent.children()) {
+                    const std::string name = local_name(child);
+                    const transform own = transform_list(child["transform"]).then(placed);
                     if (name == "g") {
-                        collect(*child, own, outline, depth + 1);
+                        collect(child, own, outline, depth + 1);
                     } else if (name == "use") {
-                        const auto *href = child->Attribute("href") ? child->Attribute("href") : child->Attribute("xlink:href");
-                        const auto found = href ? ids_.find(reference(href)) : ids_.end();
+                        const auto href = href_of(child);
+                        const auto found = href ? ids_.find(reference(std::string{*href})) : ids_.end();
                         if (found == ids_.end()) continue;
-                        const transform moved = transform::translate(number(child->Attribute("x")), number(child->Attribute("y"))).then(own);
-                        if (const auto shape = geometry_of(*found->second, local_name(*found->second)))
-                            outline.append(to_path(transform_list(found->second->Attribute("transform")).then(moved).apply(*shape)));
+                        const auto &used = found->second;
+                        const transform moved = transform::translate(number(child["x"]), number(child["y"])).then(own);
+                        if (const auto shape = geometry_of(used, local_name(used)))
+                            outline.append(to_path(transform_list(used["transform"]).then(moved).apply(*shape)));
                         else
-                            collect(*found->second, transform_list(found->second->Attribute("transform")).then(moved), outline, depth + 1);
-                    } else if (const auto shape = geometry_of(*child, name)) {
+                            collect(used, transform_list(used["transform"]).then(moved), outline, depth + 1);
+                    } else if (const auto shape = geometry_of(child, name)) {
                         outline.append(to_path(own.apply(*shape)));
                     }
                 }
             }
 
-            void children(const tinyxml2::XMLElement &parent, const context &now) {
-                for (auto *child = parent.FirstChildElement(); child; child = child->NextSiblingElement()) element(*child, now);
+            void children(const web::element &parent, const context &now) {
+                for (const auto child: parent.children()) element(child, now);
             }
 
-            static std::string text_of(const tinyxml2::XMLNode &node) {
-                std::string all;
-                for (auto *child = node.FirstChild(); child; child = child->NextSibling()) {
-                    if (const auto *text = child->ToText()) all += text->Value();
-                    else if (child->ToElement()) all += text_of(*child);
-                }
+            // Its text, its descendants' included, as SVG renders it.
+            static std::string text_of(const web::element &node) {
+                const std::string all = node.text();
                 // Runs of white space as one space, as SVG renders them.
                 std::string collapsed;
                 for (const char c: all) {
@@ -584,7 +586,7 @@ namespace sc {
                 return trimmed(collapsed);
             }
 
-            void element(const tinyxml2::XMLElement &node, const context &inherited) {
+            void element(const web::element &node, const context &inherited) {
                 const std::string name = local_name(node);
                 if (name == "defs" || name == "clipPath" || name == "symbol" || name == "title" || name == "desc" || name == "metadata" ||
                     name == "style" || name == "linearGradient" || name == "radialGradient" || name == "pattern" || name == "marker" ||
@@ -592,18 +594,18 @@ namespace sc {
                     return; // not drawn where they are
                 context now = inherited;
                 if (name == "use") {
-                    const auto *href = node.Attribute("href") ? node.Attribute("href") : node.Attribute("xlink:href");
-                    const auto found = href ? ids_.find(reference(href)) : ids_.end();
+                    const auto href = href_of(node);
+                    const auto found = href ? ids_.find(reference(std::string{*href})) : ids_.end();
                     if (found == ids_.end() || depth_ > 16) return;
-                    now.placed = transform::translate(number(node.Attribute("x")), number(node.Attribute("y"))).then(now.placed);
+                    now.placed = transform::translate(number(node["x"]), number(node["y"])).then(now.placed);
                     apply_paint(node, now);
                     ++depth_;
-                    if (local_name(*found->second) == "symbol") children(*found->second, now);
-                    else element(*found->second, now);
+                    if (local_name(found->second) == "symbol") children(found->second, now);
+                    else element(found->second, now);
                     --depth_;
                     return;
                 }
-                if (name == "svg") now.placed = transform::translate(number(node.Attribute("x")), number(node.Attribute("y"))).then(now.placed);
+                if (name == "svg") now.placed = transform::translate(number(node["x"]), number(node["y"])).then(now.placed);
                 apply_paint(node, now);
                 if (name == "g" || name == "svg" || name == "a" || name == "switch") {
                     children(node, now);
@@ -615,7 +617,7 @@ namespace sc {
                     if (content.empty()) return;
                     font lettering = now.lettering;
                     lettering.size *= now.placed.scale_factor();
-                    text sample{std::move(content), now.placed.apply(point{number(node.Attribute("x")), number(node.Attribute("y"))}), lettering};
+                    text sample{std::move(content), now.placed.apply(point{number(node["x"]), number(node["y"])}), lettering};
                     if (now.anchor == "middle" || now.anchor == "end") {
                         const double width = label{sample}.bounds().width();
                         sample.position.x(sample.position.x() - (now.anchor == "middle" ? width / 2 : width));
@@ -734,12 +736,16 @@ namespace sc {
     }
 
     drawing drawing::from_svg(const std::string_view svg) {
-        tinyxml2::XMLDocument document;
-        if (document.Parse(svg.data(), svg.size()) != tinyxml2::XML_SUCCESS) throw std::runtime_error("sc::drawing: not SVG (bad XML)");
-        const auto *root = document.RootElement();
-        if (!root || local_name(*root) != "svg") throw std::runtime_error("sc::drawing: not SVG (the root isn't <svg>)");
+        std::optional<web::document> document;
+        try {
+            document = web::document::parse(svg);
+        } catch (const web::error &mistake) {
+            throw std::runtime_error(std::string{"sc::drawing: not SVG ("} + mistake.what() + ")");
+        }
+        const auto root = document->root();
+        if (local_name(root) != "svg") throw std::runtime_error("sc::drawing: not SVG (the root isn't <svg>)");
         drawing result;
-        reader{result}.read(*root);
+        reader{result}.read(root);
         return result;
     }
 

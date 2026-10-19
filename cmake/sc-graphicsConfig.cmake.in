@@ -2,7 +2,8 @@
 
 include("${CMAKE_CURRENT_LIST_DIR}/SimplyCppFunctions.cmake")
 
-# canvas.h uses sc-core's geometry and colours; tinyxml2 is linked by path.
-find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.10.0)
+# canvas.h uses sc-core's geometry and colours; the libraries link sc-web (SVG as XML).
+find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.12.0)
+find_or_install_package(sc-web simply-cpp-web-dev simply-cpp-web 1.1.0)
 
 include("${CMAKE_CURRENT_LIST_DIR}/sc-graphicsTargets.cmake")
