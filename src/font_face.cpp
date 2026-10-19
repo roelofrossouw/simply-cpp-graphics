@@ -187,13 +187,18 @@ namespace sc {
                 if (const auto found = faces.find(key); found != faces.end()) return found->second;
                 opened result;
                 if (library && FT_New_Face(library, file.c_str(), index, &result.face) != 0) result.face = nullptr;
-                // Outline fonts, and colour ones whose glyphs are bitmaps (Noto Color Emoji's CBDT).
-                if (result.face && ((!FT_IS_SCALABLE(result.face) && !FT_HAS_COLOR(result.face)) || result.face->units_per_EM == 0)) {
+                // Outline fonts, and colour ones whose glyphs are bitmaps (Noto Color Emoji's CBDT),
+                // whose em FreeType leaves at 0: their head table has it.
+                double em = result.face ? result.face->units_per_EM : 0;
+                if (result.face && em == 0 && FT_HAS_COLOR(result.face)) {
+                    if (const auto *head = static_cast<const TT_Header *>(FT_Get_Sfnt_Table(result.face, FT_SFNT_HEAD))) em = head->Units_Per_EM;
+                }
+                if (result.face && ((!FT_IS_SCALABLE(result.face) && !FT_HAS_COLOR(result.face)) || em == 0)) {
                     FT_Done_Face(result.face);
                     result.face = nullptr;
                 }
                 if (FT_Face face = result.face) {
-                    result.units_per_em = face->units_per_EM;
+                    result.units_per_em = em;
                     result.ascender = face->ascender;
                     result.descender = -face->descender;
                     result.line_height = face->height;
