@@ -151,12 +151,12 @@ that didn't fit. No kerning, as the engines draw none.
 ```cpp
 #include <page.h>
 
-sc::page_dimensions(sc::page_size::a4);                                // 595 x 842 points
-sc::page_dimensions(sc::page_size::a3, sc::orientation::landscape);    // 1191 x 842
+sc::page_dimensions(sc::page_size::A4);                                // 595 x 842 points
+sc::page_dimensions(sc::page_size::A3, sc::orientation::landscape);    // 1191 x 842
 sc::page_size_from("Letter");                                         // any case; else std::invalid_argument
 ```
 
-Sizes are `a3`, `a4`, `a5`, `letter` and `legal`.
+Sizes are `A3`, `A4`, `A5`, `letter` and `legal`.
 
 ## Writing an engine
 
