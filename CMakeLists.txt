@@ -14,7 +14,9 @@ find_or_install_package(sc-web simply-cpp-web-dev simply-cpp-web 1.4.0)
 # sc::font_face: fontconfig finds the font, FreeType reads it. Through pkg-config too, linked by path.
 config_or_install_package(fontconfig libfontconfig-dev fontconfig)
 config_or_install_package(freetype2 libfreetype-dev freetype)
-foreach (library fontconfig freetype)
+# HarfBuzz shapes emoji sequences (flags, skin tones, joined ones) into their glyphs.
+config_or_install_package(harfbuzz libharfbuzz-dev harfbuzz)
+foreach (library fontconfig freetype harfbuzz)
     string(TOUPPER "SC_GRAPHICS_${library}_LIBRARY" cached)
     if (${cached} AND NOT EXISTS "${${cached}}")
         message(STATUS "${library}: the cached library location is gone, looking again")
@@ -23,10 +25,11 @@ foreach (library fontconfig freetype)
 endforeach ()
 find_library(SC_GRAPHICS_FONTCONFIG_LIBRARY NAMES fontconfig HINTS ${fontconfig_LIBRARY_DIRS} REQUIRED)
 find_library(SC_GRAPHICS_FREETYPE_LIBRARY NAMES freetype HINTS ${freetype2_LIBRARY_DIRS} REQUIRED)
+find_library(SC_GRAPHICS_HARFBUZZ_LIBRARY NAMES harfbuzz HINTS ${harfbuzz_LIBRARY_DIRS} REQUIRED)
 
 # These paths go into the exported targets, so not Homebrew's versioned Cellar folder (removed on
 # every upgrade or reinstall, breaking whatever links sc-graphics) but its opt link, which follows.
-foreach (library FONTCONFIG FREETYPE)
+foreach (library FONTCONFIG FREETYPE HARFBUZZ)
     set(found "${SC_GRAPHICS_${library}_LIBRARY}")
     if (found MATCHES "^(.*)/Cellar/([^/]+)/[^/]+/(.*)$" AND EXISTS "${CMAKE_MATCH_1}/opt/${CMAKE_MATCH_2}/${CMAKE_MATCH_3}")
         set(SC_GRAPHICS_${library}_LIBRARY "${CMAKE_MATCH_1}/opt/${CMAKE_MATCH_2}/${CMAKE_MATCH_3}" CACHE FILEPATH "" FORCE)
@@ -39,12 +42,14 @@ set(SOURCE_LINK_LIBRARIES)
 
 add_sc_object(paint LINK_LIBRARIES sc::sc-core)
 add_sc_object(bitmap LINK_LIBRARIES sc::sc-core)
-add_sc_object(canvas LINK_LIBRARIES sc::sc-core PUBLIC_LINK_LIBRARIES sc::sc-core)
+add_sc_object(canvas INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src LINK_LIBRARIES sc::sc-core PUBLIC_LINK_LIBRARIES sc::sc-core)
 add_sc_object(paragraph LINK_LIBRARIES sc::sc-core)
-# fontconfig and FreeType stay out of the installed header.
+# fontconfig, FreeType and HarfBuzz stay out of the installed headers.
 add_sc_object(font_face
-        LINK_LIBRARIES sc::sc-core PkgConfig::fontconfig PkgConfig::freetype2
-        PUBLIC_LINK_LIBRARIES ${SC_GRAPHICS_FONTCONFIG_LIBRARY} ${SC_GRAPHICS_FREETYPE_LIBRARY})
+        SOURCES src/glyphs.h
+        INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src
+        LINK_LIBRARIES sc::sc-core PkgConfig::fontconfig PkgConfig::freetype2 PkgConfig::harfbuzz
+        PUBLIC_LINK_LIBRARIES ${SC_GRAPHICS_FONTCONFIG_LIBRARY} ${SC_GRAPHICS_FREETYPE_LIBRARY} ${SC_GRAPHICS_HARFBUZZ_LIBRARY})
 # Drawings, and reading and writing them as SVG (through sc-web, out of the installed headers).
 add_sc_object(drawing
         SOURCES src/drawing_svg.cpp
@@ -68,7 +73,8 @@ add_sc_example(sc-graphics-demo)
 # sc::canvas has a primitive more since 5.3.0 (paint_bitmap), so its vtable changed: engines (and
 # sc-ai, which draws) built against an earlier one would call the wrong function, so they're
 # upgraded with it.
-package_sc_module(DEPENDS "simply-cpp-web (>= 1.4.0~)"
-        DEV_DEPENDS "simply-cpp-dev (>= 1.12.0~)" "simply-cpp-web-dev (>= 1.4.0~)" libfontconfig-dev libfreetype-dev
+# An emoji font, so emoji have a face to fall back on (a colour one).
+package_sc_module(DEPENDS "simply-cpp-web (>= 1.4.0~)" fonts-noto-color-emoji
+        DEV_DEPENDS "simply-cpp-dev (>= 1.12.0~)" "simply-cpp-web-dev (>= 1.4.0~)" libfontconfig-dev libfreetype-dev libharfbuzz-dev
         BREAKS "simply-cpp-image (<< 5.1.0~)" "simply-cpp-pdf (<< 3.1.0~)" "simply-cpp-mupdf (<< 4.1.0~)" "simply-cpp-ai (<< 2.0.2~)"
         "simply-cpp-litehtml (<< 1.0.0~)")

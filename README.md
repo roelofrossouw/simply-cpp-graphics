@@ -106,6 +106,16 @@ A font's measurements are its closest installed face at its size, as sc-pdf
 and sc-mupdf draw it; `available()` tells whether its family is installed
 rather than substituted.
 
+**Characters a font lacks** are drawn, and measured, in an installed face that
+has them, as browsers do: text is split into runs by face, so `✓` or `€` in a
+font without them still shows. **Emoji** (👍, 🇿🇦, 👩‍👩‍👧, 👍🏽) go to a colour emoji
+font (Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji), shaped with
+HarfBuzz so flags, skin tones and joined sequences are one glyph each, and are
+drawn as bitmaps (rendered once, at 128 pixels) on any canvas, in their own
+colours. A VS15 (`❤︎`) asks for the text form. The apt package depends on
+`fonts-noto-color-emoji`. Emoji are pictures in a PDF, so they aren't found by
+searching its text.
+
 ```cpp
 #include <font.h>
 
