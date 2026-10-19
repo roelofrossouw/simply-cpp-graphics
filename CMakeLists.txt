@@ -65,8 +65,10 @@ endif ()
 
 add_sc_example(sc-graphics-demo)
 
-# sc::fill holds an optional gradient since 5.1.0, so it's bigger: engines (and sc-ai, which draws)
-# built against 5.0 would read it wrong, so they're upgraded with it.
+# sc::canvas has a primitive more since 5.3.0 (paint_bitmap), so its vtable changed: engines (and
+# sc-ai, which draws) built against an earlier one would call the wrong function, so they're
+# upgraded with it.
 package_sc_module(DEPENDS "simply-cpp-web (>= 1.4.0~)"
         DEV_DEPENDS "simply-cpp-dev (>= 1.12.0~)" "simply-cpp-web-dev (>= 1.4.0~)" libfontconfig-dev libfreetype-dev
-        BREAKS "simply-cpp-image (<< 5.0.0~)" "simply-cpp-pdf (<< 3.0.5~)" "simply-cpp-mupdf (<< 4.0.5~)" "simply-cpp-ai (<< 2.0.0~)")
+        BREAKS "simply-cpp-image (<< 5.1.0~)" "simply-cpp-pdf (<< 3.1.0~)" "simply-cpp-mupdf (<< 4.1.0~)" "simply-cpp-ai (<< 2.0.2~)"
+        "simply-cpp-litehtml (<< 1.0.0~)")
