@@ -86,8 +86,8 @@ namespace sc {
         /// where their transform allows; a mask is read as a clip of its shapes. The page is the
         /// width and height in pixels (units converted), the viewBox fitted into it; else the
         /// viewBox's size. Linear gradients are read (stops, units, gradientTransform, href), and
-        /// images that are PNG or JPEG data: URIs (preserveAspectRatio too). Not
-        /// read: radial gradients (their middle colour is), patterns, markers, filters, stylesheets.
+        /// images that are PNG or JPEG data: URIs (preserveAspectRatio too). Not read: radial
+        /// gradients (their middle colour is), patterns, markers, filters, stylesheets.
         /// Throws std::runtime_error when it isn't SVG.
         ///
         /// TODO: radial gradients, and masks by their luminance rather than as clips.
@@ -97,8 +97,8 @@ namespace sc {
         [[nodiscard]] static drawing load_svg(const std::filesystem::path &file);
 
         /// As SVG, each shape its own element (a rotated_rect a rotated <rect>, a group a <g>, a
-        /// figure an <image> of a data: URI), so
-        /// from_svg() reads it back the same, a group as its shapes.
+        /// figure an <image> of a data: URI), so from_svg() reads it back the same, a group as its
+        /// shapes. Without a page, the page runs from the origin to what's drawn.
         [[nodiscard]] std::string to_svg() const;
 
         /// Writes to_svg() to a file; throws std::runtime_error when it can't.

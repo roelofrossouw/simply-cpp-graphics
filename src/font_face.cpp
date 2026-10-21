@@ -143,6 +143,8 @@ namespace sc {
         }
 
         // The next code point of UTF-8 text from i, moving i past it; malformed bytes count as U+FFFD.
+        // Not sc::utf8::decode: that also rejects overlong forms and surrogates, which would change
+        // the widths measured for such bytes.
         char32_t next_codepoint(const std::string_view text, std::size_t &i) {
             const auto byte = [&](const std::size_t at) { return static_cast<unsigned char>(text[at]); };
             const unsigned char first = byte(i);
@@ -237,8 +239,6 @@ namespace sc {
         double scaled(const opened &face, const double units, const double size) { return units * size / face.units_per_em; }
     }
 
-    // font_face
-
     sc::typeface font_face::typeface() const {
         if (auto found = typeface::find(impl_->family)) return *found;
         return sc::typeface{impl_->family}; // uninstalled since: the name it had
@@ -289,8 +289,6 @@ namespace sc {
         return true;
     }
 
-    // typeface
-
     std::optional<typeface> typeface::find(const std::string_view name) {
         // fontconfig lists a family by any of its names, ignoring case; the typeface keeps the one
         // that matched, as the font spells it.
@@ -336,8 +334,6 @@ namespace sc {
         });
     }
 
-    // font
-
     namespace {
         struct lookup {
             std::optional<font_face> face;
@@ -377,8 +373,6 @@ namespace sc {
     double font::x_height() const { const auto &found = looked_up(*this).face; return found ? found->x_height(size) : 0; }
 
     double font::cap_height() const { const auto &found = looked_up(*this).face; return found ? found->cap_height(size) : 0; }
-
-    // ---------------------------------------------------------------- runs and colour glyphs
 
     namespace {
         bool between(const char32_t code, const char32_t first, const char32_t last) { return code >= first && code <= last; }
@@ -495,7 +489,7 @@ namespace sc {
     std::vector<detail::text_run> detail::runs(const font &spec, const std::string_view text) {
         std::vector<text_run> out;
         const auto own = spec.face();
-        // Plain ASCII in a font that has it all: one run, as before (the usual case, kept quick).
+        // Plain ASCII in a font that has it all: one run (the usual case, kept quick).
         if (own && std::ranges::all_of(text, [](const char c) { return static_cast<unsigned char>(c) < 0x80; }) && own->covers(text))
             return {{std::string{text}, own, false, false}};
         for (const auto &each: clusters_of(text)) {

@@ -46,7 +46,8 @@ namespace sc {
 
         const metrics &entry(const standard_font::face which) { return table[static_cast<std::size_t>(which)]; }
 
-        // The next code point of UTF-8 text from i, moving i past it.
+        // The next code point of UTF-8 text from i, moving i past it. Unchecked, unlike
+        // sc::utf8::decode: a stray byte counts as itself (so it may have a Windows-1252 width).
         char32_t next(const std::string_view text, std::size_t &i) {
             const auto first = static_cast<unsigned char>(text[i]);
             const std::size_t length = first < 0x80 ? 1 : (first >> 5) == 6 ? 2 : (first >> 4) == 14 ? 3 : (first >> 3) == 30 ? 4 : 1;

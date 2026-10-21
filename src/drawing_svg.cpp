@@ -19,8 +19,6 @@
 
 namespace sc {
     namespace {
-        // ---------------------------------------------------------------- reading: small parsers
-
         bool is_space(const char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == ','; }
 
         // Numbers one after the other, as SVG writes them: "1,2 3-4.5.5" is 1, 2, 3, -4.5, 0.5.
@@ -50,7 +48,6 @@ namespace sc {
                 return true;
             }
 
-            // The next command letter, if that's what comes next.
             bool command(char &letter) {
                 skip();
                 if (!std::isalpha(static_cast<unsigned char>(*at_)) || *at_ == 'e' || *at_ == 'E') return false;
@@ -289,8 +286,6 @@ namespace sc {
             if (const auto end = id.find_first_of(")\"' "); end != std::string::npos) id.erase(end);
             return id;
         }
-
-        // ---------------------------------------------------------------- reading: the document
 
         // The paint and placement in effect for an element: what it inherits, plus its own.
         struct context {
@@ -573,7 +568,7 @@ namespace sc {
             // Its text, its descendants' included, as SVG renders it.
             static std::string text_of(const web::element &node) {
                 const std::string all = node.text();
-                // Runs of white space as one space, as SVG renders them.
+                // Runs of white space as one space.
                 std::string collapsed;
                 for (const char c: all) {
                     const bool blank = c == ' ' || c == '\n' || c == '\t' || c == '\r';
@@ -672,8 +667,6 @@ namespace sc {
                 }
             }
         };
-
-        // ---------------------------------------------------------------- writing
 
         std::string format(const double value) {
             std::ostringstream out;
@@ -795,7 +788,6 @@ namespace sc {
     }
 
     std::string drawing::to_svg() const {
-        // Without a page, one from the origin to what's drawn.
         sc::size frame = page_;
         if (frame.area() <= 0) {
             const rect covered = bounds();
