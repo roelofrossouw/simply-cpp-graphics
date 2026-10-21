@@ -47,6 +47,9 @@ namespace sc {
         sc::transform placement;
         std::optional<path> clip;
 
+        /// The placement that stretches the unit square over position.
+        [[nodiscard]] static sc::transform filling(const rect &position);
+
         /// Where its corners land, within the clip's bounds.
         [[nodiscard]] rect bounds() const;
 
@@ -124,6 +127,9 @@ namespace sc {
 
         /// The area its items cover together; an empty rect when it has none.
         [[nodiscard]] rect bounds() const;
+
+        /// Its page, from the origin; its bounds() when it has none.
+        [[nodiscard]] rect frame() const;
 
         /// Every shape, figure and clip through the transform, outlines and text sizes scaled with
         /// it; a label moves to where its box lands, its glyphs not mirrored or turned. The page stays.

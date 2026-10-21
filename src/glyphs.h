@@ -34,7 +34,6 @@ namespace sc::detail {
     struct colour_glyph {
         bitmap picture;
         double left, top, width, height;
-        double pen; // the pen's x when it's drawn, from the run's start
     };
 
     struct colour_layout {

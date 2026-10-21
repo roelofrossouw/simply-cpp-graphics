@@ -3,8 +3,8 @@
 #include <distance.h>
 #include <size.h>
 
-#include <algorithm>
-#include <cctype>
+#include <core.h>
+
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -38,8 +38,7 @@ namespace sc {
     /// A size by its name, in any case: "A3", "A4", "A5", "letter" or "legal" (a command line's
     /// --size); std::invalid_argument for any other.
     inline page_size page_size_from(std::string_view name) {
-        std::string lower{name};
-        std::ranges::transform(lower, lower.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        const std::string lower = lowercase(name);
         if (lower == "a3") return page_size::A3;
         if (lower == "a4") return page_size::A4;
         if (lower == "a5") return page_size::A5;

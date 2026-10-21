@@ -52,7 +52,7 @@ namespace sc {
             if (run.colour) {
                 const auto laid = detail::lay_out_colour(*run.face, run.text, sample.font.size);
                 for (const auto &glyph: laid.glyphs)
-                    paint_bitmap(glyph.picture, transform::scale(glyph.width, glyph.height).then(transform::translate(x + glyph.left, y + glyph.top)));
+                    paint_bitmap(glyph.picture, figure::filling(rect{x + glyph.left, y + glyph.top, glyph.width, glyph.height}));
                 x += laid.advance;
             } else {
                 const text piece{run.text, {x, y}, detail::font_of(sample.font, run)};
@@ -64,7 +64,7 @@ namespace sc {
 
     void canvas::draw(const bitmap &picture, const rect &position) {
         if (position.width() <= 0 || position.height() <= 0) return;
-        paint_bitmap(picture, transform::scale(position.width(), position.height()).then(transform::translate(position.left(), position.top())));
+        paint_bitmap(picture, figure::filling(position));
     }
 
     void canvas::draw(const path &shape, const sc::appearance &look) {
@@ -97,7 +97,7 @@ namespace sc {
     }
 
     void canvas::draw(const drawing &picture, const rect &position) {
-        const rect frame = picture.page().area() > 0 ? rect{0, 0, picture.page().width(), picture.page().height()} : picture.bounds();
+        const rect frame = picture.frame();
         if (frame.width() <= 0 || frame.height() <= 0) return;
         const double scale = std::min(position.width() / frame.width(), position.height() / frame.height());
         if (scale <= 0) return;

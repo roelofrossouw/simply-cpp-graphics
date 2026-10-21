@@ -11,10 +11,11 @@
 #include FT_TRUETYPE_TABLES_H
 #include <hb.h>
 
+#include <core.h>
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <cctype>
 #include <cstdlib>
 #include <map>
 #include <mutex>
@@ -42,12 +43,28 @@ namespace sc {
             return available;
         }
 
-        const FcChar8 *fc_text(const std::string &text) { return reinterpret_cast<const FcChar8 *>(text.c_str()); }
+        // Values made once per key and kept, shared by all threads. Making one runs outside the lock,
+        // so two threads may both make it; the first one stored is kept.
+        template<typename Key, typename Value>
+        class memo {
+        public:
+            template<typename Make>
+            const Value &get(const Key &key, Make make) {
+                {
+                    const std::lock_guard lock{guard_};
+                    if (const auto known = values_.find(key); known != values_.end()) return known->second;
+                }
+                Value made = make();
+                const std::lock_guard lock{guard_};
+                return values_.emplace(key, std::move(made)).first->second;
+            }
 
-        std::string lower(std::string text) {
-            std::ranges::transform(text, text.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            return text;
-        }
+        private:
+            std::mutex guard_;
+            std::map<Key, Value> values_;
+        };
+
+        const FcChar8 *fc_text(const std::string &text) { return reinterpret_cast<const FcChar8 *>(text.c_str()); }
 
         std::string string_of(FcPattern *pattern, const char *object, const int n = 0) {
             FcChar8 *text = nullptr;
@@ -57,7 +74,7 @@ namespace sc {
         // fontconfig's generic families: asking for one is always answered exactly.
         bool generic(const std::string &family) {
             static const std::set<std::string> names{"sans-serif", "sans", "serif", "monospace", "mono", "cursive", "fantasy", "system-ui", "emoji"};
-            return names.contains(lower(family));
+            return names.contains(lowercase(family));
         }
 
         // A face from a fontconfig pattern holding its file, index, family, style, weight and slant.
@@ -101,7 +118,7 @@ namespace sc {
                 for (int i = 0; !exact; ++i) {
                     const auto name = string_of(matched, FC_FAMILY, i);
                     if (name.empty()) break;
-                    exact = lower(name) == lower(family);
+                    exact = lowercase(name) == lowercase(family);
                 }
                 FcPatternDestroy(matched);
             }
@@ -282,7 +299,7 @@ namespace sc {
             for (int i = 0; found.empty(); ++i) {
                 const auto family = string_of(font, FC_FAMILY, i);
                 if (family.empty()) break;
-                if (lower(family) == lower(std::string{name})) found = family;
+                if (lowercase(family) == lowercase(name)) found = family;
             }
         });
         if (found.empty()) return std::nullopt;
@@ -292,7 +309,7 @@ namespace sc {
     std::vector<typeface> typeface::installed() {
         std::map<std::string, std::string> names; // by lowercase name, so each is listed once
         list({}, [&](FcPattern *font) {
-            if (const auto family = string_of(font, FC_FAMILY); !family.empty()) names.emplace(lower(family), family);
+            if (const auto family = string_of(font, FC_FAMILY); !family.empty()) names.emplace(lowercase(family), family);
         });
         std::vector<typeface> result;
         for (const auto &[key, name]: names) result.push_back(typeface{name});
@@ -330,13 +347,11 @@ namespace sc {
         // font.face(), found once per family, weight, slant and style: fontconfig's matching takes a
         // while, and text is measured often.
         const lookup &looked_up(const font &spec) {
-            static std::mutex guard;
-            static std::map<std::tuple<std::string, int, bool, std::string>, lookup> found;
-            const auto key = std::tuple{spec.family, spec.weight, spec.italic, spec.style};
-            const std::lock_guard lock{guard};
-            if (const auto known = found.find(key); known != found.end()) return known->second;
-            auto [face, exact] = match(spec.family, spec.weight, spec.italic, spec.style);
-            return found.emplace(key, lookup{std::move(face), exact}).first->second;
+            static memo<std::tuple<std::string, int, bool, std::string>, lookup> found;
+            return found.get({spec.family, spec.weight, spec.italic, spec.style}, [&] {
+                auto [face, exact] = match(spec.family, spec.weight, spec.italic, spec.style);
+                return lookup{std::move(face), exact};
+            });
         }
     }
 
@@ -438,15 +453,8 @@ namespace sc {
         }
 
         // The installed face that has code, as fontconfig ranks them for the weight and slant; for
-        // emoji, a colour one first. Found once per character, weight, slant and kind.
-        std::optional<font_face> fallback_for(const char32_t code, const int weight, const bool italic, const bool emoji) {
-            static std::mutex guard;
-            static std::map<std::tuple<char32_t, int, bool, bool>, std::optional<font_face> > found;
-            const auto key = std::tuple{code, weight, italic, emoji};
-            {
-                const std::lock_guard lock{guard};
-                if (const auto known = found.find(key); known != found.end()) return known->second;
-            }
+        // emoji, a colour one first.
+        std::optional<font_face> find_fallback(const char32_t code, const int weight, const bool italic, const bool emoji) {
             std::optional<font_face> result;
             if (fontconfig_ready()) {
                 FcPattern *pattern = FcPatternCreate();
@@ -475,8 +483,12 @@ namespace sc {
                 FcCharSetDestroy(wanted);
                 FcPatternDestroy(pattern);
             }
-            const std::lock_guard lock{guard};
-            return found.emplace(key, result).first->second;
+            return result;
+        }
+
+        std::optional<font_face> fallback_for(const char32_t code, const int weight, const bool italic, const bool emoji) {
+            static memo<std::tuple<char32_t, int, bool, bool>, std::optional<font_face> > found;
+            return found.get({code, weight, italic, emoji}, [&] { return find_fallback(code, weight, italic, emoji); });
         }
     }
 
@@ -583,14 +595,7 @@ namespace sc {
 
         // Renders glyph in colour, from the strike nearest 128 pixels (a bitmap font's) or at 128
         // pixels (a COLR font's). Nothing for a blank glyph or one FreeType can't colour.
-        std::optional<rendered> render(const font_face &face, const unsigned glyph) {
-            static std::mutex guard;
-            static std::map<std::tuple<std::string, int, unsigned>, std::optional<rendered> > done;
-            const auto key = std::tuple{face.file(), face.index(), glyph};
-            {
-                const std::lock_guard lock{guard};
-                if (const auto known = done.find(key); known != done.end()) return known->second;
-            }
+        std::optional<rendered> draw_glyph(const font_face &face, const unsigned glyph) {
             std::optional<rendered> result;
             if (FT_Face f = open(face).face) {
                 double ppem = 128;
@@ -626,8 +631,12 @@ namespace sc {
                     }
                 }
             }
-            const std::lock_guard lock{guard};
-            return done.emplace(key, result).first->second;
+            return result;
+        }
+
+        const std::optional<rendered> &render(const font_face &face, const unsigned glyph) {
+            static memo<std::tuple<std::string, int, unsigned>, std::optional<rendered> > done;
+            return done.get({face.file(), face.index(), glyph}, [&] { return draw_glyph(face, glyph); });
         }
 
         // HarfBuzz's font for a face, made once and kept: shaping only reads it.
@@ -662,7 +671,7 @@ namespace sc {
             const double scale = size / units;
             if (const auto glyph = render(face, infos[i].codepoint)) {
                 out.glyphs.push_back({glyph->picture, pen + positions[i].x_offset * scale + glyph->left * size,
-                                      -(positions[i].y_offset * scale + glyph->top * size), glyph->width * size, glyph->height * size, pen});
+                                      -(positions[i].y_offset * scale + glyph->top * size), glyph->width * size, glyph->height * size});
             }
             pen += positions[i].x_advance * scale;
         }

@@ -33,6 +33,10 @@ namespace sc {
         return within(box, clip);
     }
 
+    transform figure::filling(const rect &position) {
+        return transform::scale(position.width(), position.height()).then(transform::translate(position.left(), position.top()));
+    }
+
     rect figure::bounds() const { return within(placement.apply(rect{0, 0, 1, 1}).bounds(), clip); }
 
     bool label::operator==(const label &other) const {
@@ -52,8 +56,7 @@ namespace sc {
     }
 
     void drawing::add(sc::bitmap picture, const rect &position, std::optional<path> clip) {
-        const auto placement = transform::scale(position.width(), position.height()).then(transform::translate(position.left(), position.top()));
-        items_.emplace_back(figure{std::move(picture), placement, std::move(clip)});
+        items_.emplace_back(figure{std::move(picture), figure::filling(position), std::move(clip)});
     }
 
     void drawing::add(item thing) { items_.push_back(std::move(thing)); }
@@ -102,15 +105,11 @@ namespace sc {
         return *this;
     }
 
-    namespace {
-        rect frame_of(const drawing &picture) {
-            return picture.page().area() > 0 ? rect{0, 0, picture.page().width(), picture.page().height()} : picture.bounds();
-        }
-    }
+    rect drawing::frame() const { return page_.area() > 0 ? rect{0, 0, page_.width(), page_.height()} : bounds(); }
 
-    drawing &drawing::flip_horizontal() { return apply(transform::flip_horizontal(frame_of(*this).center().x())); }
+    drawing &drawing::flip_horizontal() { return apply(transform::flip_horizontal(frame().center().x())); }
 
-    drawing &drawing::flip_vertical() { return apply(transform::flip_vertical(frame_of(*this).center().y())); }
+    drawing &drawing::flip_vertical() { return apply(transform::flip_vertical(frame().center().y())); }
 
     namespace {
         std::optional<path> innermost(const std::vector<path> &clips) {
