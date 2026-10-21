@@ -31,7 +31,6 @@ namespace sc {
         stroke(const sc::color &colour, const double width = 1) : colour_(colour), width_(width) {
         }
 
-        /// No outline.
         static stroke none() { return {sc::color{0, 0, 0, 0}, 0}; }
 
         [[nodiscard]] const sc::color &colour() const { return colour_; }
@@ -109,7 +108,6 @@ namespace sc {
             : colour_(gradient.colour_at(0.5)), rule_(rule), gradient_(gradient) {
         }
 
-        /// No inside.
         static fill none() { return {}; }
 
         [[nodiscard]] const sc::color &colour() const { return colour_; }
@@ -117,7 +115,6 @@ namespace sc {
         /// For paths; a canvas that flattens paths into separate polygons ignores it.
         [[nodiscard]] fill_rule rule() const { return rule_; }
 
-        /// The gradient, if it's one.
         [[nodiscard]] const std::optional<linear_gradient> &gradient() const { return gradient_; }
 
         [[nodiscard]] bool visible() const {
@@ -130,7 +127,7 @@ namespace sc {
         bool operator==(const fill &) const = default;
 
     private:
-        sc::color colour_{0, 0, 0, 0}; // transparent
+        sc::color colour_{0, 0, 0, 0};
         fill_rule rule_ = fill_rule::nonzero;
         std::optional<linear_gradient> gradient_;
     };
@@ -156,7 +153,6 @@ namespace sc {
         /// Only the inside: no outline.
         static appearance filled(const sc::fill &fill) { return {sc::stroke::none(), fill}; }
 
-        /// Nothing at all.
         static appearance none() { return {sc::stroke::none(), sc::fill::none()}; }
 
         [[nodiscard]] const sc::stroke &stroke() const { return stroke_; }
