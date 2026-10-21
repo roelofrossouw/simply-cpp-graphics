@@ -78,6 +78,13 @@ namespace sc {
             return value;
         }
 
+        std::vector<double> number_list(const std::string_view text) {
+            std::vector<double> values;
+            numbers in{text};
+            for (double value = 0; in.next(value);) values.push_back(value);
+            return values;
+        }
+
         std::string trimmed(const std::string &text);
 
         // A length in pixels (CSS's 96 per inch): a number with px, pt, pc, mm, cm or in; 0 for a
@@ -247,10 +254,7 @@ namespace sc {
                 if (close == std::string::npos) break;
                 std::string name = list.substr(at, open - at);
                 name.erase(std::remove_if(name.begin(), name.end(), [](const char c) { return is_space(c); }), name.end());
-                const std::string arguments = list.substr(open + 1, close - open - 1);
-                std::vector<double> v;
-                numbers in{arguments.c_str()};
-                for (double value = 0; in.next(value);) v.push_back(value);
+                const auto v = number_list(std::string_view{list}.substr(open + 1, close - open - 1));
                 const auto arg = [&](const std::size_t i, const double fallback = 0) { return i < v.size() ? v[i] : fallback; };
                 transform step;
                 if (name == "matrix" && v.size() == 6) step = transform{v[0], v[1], v[2], v[3], v[4], v[5]};
@@ -310,10 +314,7 @@ namespace sc {
             void read(const web::element &root) {
                 index(root);
                 context start;
-                const auto view_box = root["viewBox"];
-                std::vector<double> box;
-                numbers in{view_box};
-                for (double value = 0; in.next(value);) box.push_back(value);
+                const auto box = number_list(root["viewBox"]);
                 const double width = length(root["width"]), height = length(root["height"]);
                 if (box.size() == 4 && box[2] > 0 && box[3] > 0) {
                     // The viewBox at the origin, fitted into the width and height when they're given
@@ -342,6 +343,18 @@ namespace sc {
                 for (const auto child: element.children()) index(child);
             }
 
+            // The element "#id" or "url(#id)" points at; nullptr when there's none.
+            const web::element *referenced(const std::string &value) const {
+                const auto found = ids_.find(reference(value));
+                return found == ids_.end() ? nullptr : &found->second;
+            }
+
+            // The element a <use> or gradient's href points at; nullptr when there's none.
+            const web::element *linked(const web::element &element) const {
+                const auto href = href_of(element);
+                return href ? referenced(std::string{*href}) : nullptr;
+            }
+
             // A property: from style="..." first (it wins), then the presentation attribute.
             static std::optional<std::string> property(const web::element &element, const std::string &name) {
                 if (auto declared = element.style().value(name)) return std::move(*declared); // a copy, from the temporary style
@@ -359,12 +372,9 @@ namespace sc {
                 if (value == "inherit") return inherited;
                 if (value == "currentColor") return color{0, 0, 0};
                 if (value.starts_with("url(")) {
-                    if (const auto found = ids_.find(reference(value)); found != ids_.end()) {
-                        const auto &used = found->second;
-                        if (used.is("linearGradient") || used.is("radialGradient")) {
-                            if (gradient && used.is("linearGradient")) *gradient = used;
-                            return linear_gradient{{0, 0}, {1, 0}, stops_of(found->second)}.colour_at(0.5);
-                        }
+                    if (const auto *used = referenced(value); used && (used->is("linearGradient") || used->is("radialGradient"))) {
+                        if (gradient && used->is("linearGradient")) *gradient = *used;
+                        return linear_gradient{{0, 0}, {1, 0}, stops_of(*used)}.colour_at(0.5);
                     }
                     const auto after = trimmed(value.substr(value.find(')') + 1));
                     if (after.empty()) return std::nullopt;
@@ -404,10 +414,10 @@ namespace sc {
                 if (const auto v = property(element, "font-style")) now.lettering.italic = *v == "italic" || *v == "oblique";
                 if (const auto v = property(element, "text-anchor")) now.anchor = *v;
                 now.placed = transform_list(element["transform"]).then(now.placed);
-                if (const auto v = property(element, "clip-path"); v && *v != "none") {
-                    if (const auto found = ids_.find(reference(*v)); found != ids_.end()) now.clip = clip_path(found->second, now.placed);
-                } else if (const auto mask = property(element, "mask"); mask && *mask != "none") {
-                    if (const auto found = ids_.find(reference(*mask)); found != ids_.end()) now.clip = clip_path(found->second, now.placed);
+                auto clip = property(element, "clip-path");
+                if (!clip || *clip == "none") clip = property(element, "mask");
+                if (clip && *clip != "none") {
+                    if (const auto *found = referenced(*clip)) now.clip = clip_path(*found, now.placed);
                 }
             }
 
@@ -424,19 +434,17 @@ namespace sc {
 
             // A gradient's attribute, from it or the gradients it refers to with href, nearest first.
             std::optional<std::string_view> gradient_attribute(const web::element &gradient, const char *name) const {
-                std::optional<web::element> at = gradient;
+                const web::element *at = &gradient;
                 for (int depth = 0; at && depth < 8; ++depth) {
                     if (const auto value = at->attribute(name)) return value;
-                    const auto href = href_of(*at);
-                    const auto found = href ? ids_.find(reference(std::string{*href})) : ids_.end();
-                    at = found == ids_.end() ? std::nullopt : std::optional{found->second};
+                    at = linked(*at);
                 }
                 return std::nullopt;
             }
 
             // Its <stop>s, or those of the gradient it refers to with href (the first that has any).
             std::vector<linear_gradient::stop> stops_of(const web::element &gradient) const {
-                std::optional<web::element> at = gradient;
+                const web::element *at = &gradient;
                 for (int depth = 0; at && depth < 8; ++depth) {
                     std::vector<linear_gradient::stop> stops;
                     for (const auto child: at->children("stop")) {
@@ -451,9 +459,7 @@ namespace sc {
                         stops.push_back({where, colour});
                     }
                     if (!stops.empty()) return stops;
-                    const auto href = href_of(*at);
-                    const auto found = href ? ids_.find(reference(std::string{*href})) : ids_.end();
-                    at = found == ids_.end() ? std::nullopt : std::optional{found->second};
+                    at = linked(*at);
                 }
                 return {};
             }
@@ -474,7 +480,7 @@ namespace sc {
                 if (!user_space) {
                     const rect box = local.bounds();
                     if (box.width() <= 0 || box.height() <= 0) return std::nullopt;
-                    frame = transform::scale(box.width(), box.height()).then(transform::translate(box.left(), box.top()));
+                    frame = figure::filling(box);
                 }
                 auto stops = stops_of(gradient);
                 const double opacity = now.fill_opacity * now.opacity;
@@ -546,10 +552,9 @@ namespace sc {
                     if (name == "g") {
                         collect(child, own, outline, depth + 1);
                     } else if (name == "use") {
-                        const auto href = href_of(child);
-                        const auto found = href ? ids_.find(reference(std::string{*href})) : ids_.end();
-                        if (found == ids_.end()) continue;
-                        const auto &used = found->second;
+                        const auto *found = linked(child);
+                        if (!found) continue;
+                        const auto &used = *found;
                         const transform moved = transform::translate(number(child["x"]), number(child["y"])).then(own);
                         if (const auto shape = geometry_of(used))
                             outline.append(to_path(transform_list(used["transform"]).then(moved).apply(*shape)));
@@ -613,8 +618,7 @@ namespace sc {
                                   natural.width() * scale, natural.height() * scale};
                     if (slice && !clip) clip = now.placed.apply(to_path(frame));
                 }
-                const auto placement = transform::scale(placed.width(), placed.height()).then(transform::translate(placed.left(), placed.top())).then(now.placed);
-                into_.add(figure{std::move(*picture), placement, clip});
+                into_.add(figure{std::move(*picture), figure::filling(placed).then(now.placed), clip});
             }
 
             void element(const web::element &node, const context &inherited) {
@@ -625,14 +629,13 @@ namespace sc {
                     return; // not drawn where they are
                 context now = inherited;
                 if (name == "use") {
-                    const auto href = href_of(node);
-                    const auto found = href ? ids_.find(reference(std::string{*href})) : ids_.end();
-                    if (found == ids_.end() || depth_ > 16) return;
+                    const auto *found = linked(node);
+                    if (!found || depth_ > 16) return;
                     now.placed = transform::translate(number(node["x"]), number(node["y"])).then(now.placed);
                     apply_paint(node, now);
                     ++depth_;
-                    if (found->second.is("symbol")) children(found->second, now);
-                    else element(found->second, now);
+                    if (found->is("symbol")) children(*found, now);
+                    else element(*found, now);
                     --depth_;
                     return;
                 }
