@@ -10,7 +10,7 @@ message(STATUS "SimplyCPP ${SC_MODULE} Version: ${SC_VERSION}")
 
 find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.20.0)
 # SVG is read as XML by sc-web (libxml2).
-find_or_install_package(sc-web simply-cpp-web-dev simply-cpp-web 1.4.0)
+find_or_install_package(sc-web simply-cpp-web-dev simply-cpp-web 1.4.7)
 # sc::font_face: fontconfig finds the font, FreeType reads it. Through pkg-config too, linked by path.
 config_or_install_package(fontconfig libfontconfig-dev fontconfig)
 config_or_install_package(freetype2 libfreetype-dev freetype)
@@ -75,8 +75,8 @@ add_sc_example(sc-graphics-demo)
 # sc-ai, which draws) built against an earlier one would call the wrong function, so they're
 # upgraded with it.
 # An emoji font, so emoji have a face to fall back on (a colour one).
-package_sc_module(DEPENDS "simply-cpp-web (>= 1.4.0~)" fonts-noto-color-emoji
-        DEV_DEPENDS "simply-cpp-dev (>= 1.20.0~)" "simply-cpp-web-dev (>= 1.4.0~)" libfontconfig-dev libfreetype-dev libharfbuzz-dev
+package_sc_module(DEPENDS "simply-cpp-web (>= 1.4.7~)" fonts-noto-color-emoji
+        DEV_DEPENDS "simply-cpp-dev (>= 1.20.0~)" "simply-cpp-web-dev (>= 1.4.7~)" libfontconfig-dev libfreetype-dev libharfbuzz-dev
         BREAKS "simply-cpp-image (<< 5.1.0~)" "simply-cpp-pdf (<< 3.1.0~)" "simply-cpp-mupdf (<< 4.1.0~)" "simply-cpp-ai (<< 2.0.2~)"
         "simply-cpp-litehtml (<< 1.0.0~)"
         # page_size's values are A3, A4 and A5 since 6.0.0: headers naming a4 don't compile against it.
