@@ -83,7 +83,9 @@ Reading SVG covers paths, basic shapes, text, groups, transforms, clip paths,
 `<defs>`/`<use>`, flat colours with opacity and `style="..."`. Shapes keep
 their kind where their transform allows (a moved `<rect>` stays an `sc::rect`,
 a turned one becomes an `sc::rotated_rect`); a mask is read as a clip of its
-shapes; linear gradients are read with their stops, units and transform. Not
+shapes; percentages (`width="100%"`) are of the viewport, the viewBox or else
+the width and height, as SVG has them; linear gradients are read with their
+stops, units and transform. Not
 read: radial gradients (their middle colour is), patterns, markers, filters
 and stylesheets. Writing gives each shape its own element, so a
 drawing reads back as it was (a group as its shapes).

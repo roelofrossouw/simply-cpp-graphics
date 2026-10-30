@@ -318,11 +318,13 @@ namespace sc {
                     const double page_height = height > 0 ? height : width > 0 ? box[3] * width / box[2] : box[3];
                     const double scale = std::min(page_width / box[2], page_height / box[3]);
                     into_.page({page_width, page_height});
+                    viewport_ = {box[2], box[3]};
                     start.placed = transform::translate(-box[0], -box[1])
                                        .then(transform::scale(scale))
                                        .then(transform::translate((page_width - box[2] * scale) / 2, (page_height - box[3] * scale) / 2));
                 } else {
                     into_.page({width, height});
+                    viewport_ = {width, height};
                 }
                 apply_paint(root, start);
                 children(root, start);
@@ -332,6 +334,34 @@ namespace sc {
             drawing &into_;
             std::map<std::string, web::element> ids_;
             int depth_ = 0; // of <use>, against references that loop
+            // The viewport's size in user units, what percentages are of: the viewBox's, or else the
+            // width and height (an inner <svg> has its own).
+            sc::size viewport_{0, 0};
+
+            enum class axis { x, y, other };
+
+            // A coordinate or length in user units, or a percentage of the viewport: of its width for
+            // x, its height for y, and for anything else (a radius) of its diagonal over √2, as SVG has
+            // it. Units other than % are taken as user units.
+            [[nodiscard]] double coordinate(const std::string_view text, const axis along, const double fallback = 0) const {
+                const double value = number(text, fallback);
+                if (text.find('%') == std::string_view::npos) return value;
+                const double width = viewport_.width(), height = viewport_.height();
+                const double base = along == axis::x ? width : along == axis::y ? height : std::sqrt((width * width + height * height) / 2);
+                return value / 100 * base;
+            }
+
+            // An attribute's axis by its name: x, cx, x1, x2, width and rx along x, their y kin along y.
+            static axis axis_of(const std::string_view name) {
+                if (name == "x" || name == "cx" || name == "x1" || name == "x2" || name == "width" || name == "rx") return axis::x;
+                if (name == "y" || name == "cy" || name == "y1" || name == "y2" || name == "height" || name == "ry") return axis::y;
+                return axis::other;
+            }
+
+            // A width or height with its units (length()), or a percentage of the viewport.
+            [[nodiscard]] double extent(const std::string_view text, const axis along) const {
+                return text.find('%') == std::string_view::npos ? length(text) : coordinate(text, along);
+            }
 
             void index(const web::element &element) {
                 if (const auto id = element.attribute("id")) ids_.emplace(std::string{*id}, element);
@@ -489,9 +519,11 @@ namespace sc {
             }
 
             // A basic shape or path in the element's own coordinates; nothing for anything else.
-            static std::optional<shape> geometry_of(const web::element &element) {
+            std::optional<shape> geometry_of(const web::element &element) const {
                 const auto name = element.name();
-                const auto at = [&](const char *attribute, const double fallback = 0) { return number(element[attribute], fallback); };
+                const auto at = [&](const char *attribute, const double fallback = 0) {
+                    return coordinate(element[attribute], axis_of(attribute), fallback);
+                };
                 if (name == "rect") {
                     const rect box{at("x"), at("y"), at("width"), at("height")};
                     if (box.width() <= 0 || box.height() <= 0) return std::nullopt;
@@ -550,7 +582,7 @@ namespace sc {
                         const auto *found = linked(child);
                         if (!found) continue;
                         const auto &used = *found;
-                        const transform moved = transform::translate(number(child["x"]), number(child["y"])).then(own);
+                        const transform moved = transform::translate(coordinate(child["x"], axis::x), coordinate(child["y"], axis::y)).then(own);
                         if (const auto shape = geometry_of(used))
                             outline.append(to_path(transform_list(used["transform"]).then(moved).apply(*shape)));
                         else
@@ -592,7 +624,8 @@ namespace sc {
                     return; // not a PNG or JPEG: left out, as a viewer leaves out what it can't show
                 }
                 const sc::size natural = picture->size();
-                const rect box{number(node["x"]), number(node["y"]), length(node.attribute("width", "")), length(node.attribute("height", ""))};
+                const rect box{coordinate(node["x"], axis::x), coordinate(node["y"], axis::y), extent(node.attribute("width", ""), axis::x),
+                               extent(node.attribute("height", ""), axis::y)};
                 const double width = box.width() > 0 ? box.width() : natural.width();
                 const double height = box.height() > 0 ? box.height() : natural.height();
                 const rect frame{box.left(), box.top(), width, height};
@@ -626,7 +659,7 @@ namespace sc {
                 if (name == "use") {
                     const auto *found = linked(node);
                     if (!found || depth_ > 16) return;
-                    now.placed = transform::translate(number(node["x"]), number(node["y"])).then(now.placed);
+                    now.placed = transform::translate(coordinate(node["x"], axis::x), coordinate(node["y"], axis::y)).then(now.placed);
                     apply_paint(node, now);
                     ++depth_;
                     if (found->is("symbol")) children(*found, now);
@@ -634,9 +667,18 @@ namespace sc {
                     --depth_;
                     return;
                 }
-                if (name == "svg") now.placed = transform::translate(number(node["x"]), number(node["y"])).then(now.placed);
+                if (name == "svg") now.placed = transform::translate(coordinate(node["x"], axis::x), coordinate(node["y"], axis::y)).then(now.placed);
                 apply_paint(node, now);
-                if (name == "g" || name == "svg" || name == "a" || name == "switch") {
+                if (name == "svg") { // a viewport of its own: its viewBox's, or its width and height
+                    const sc::size outer = viewport_;
+                    const auto box = number_list(node["viewBox"]);
+                    if (box.size() == 4 && box[2] > 0 && box[3] > 0) viewport_ = {box[2], box[3]};
+                    else viewport_ = {extent(node.attribute("width", "100%"), axis::x), extent(node.attribute("height", "100%"), axis::y)};
+                    children(node, now);
+                    viewport_ = outer;
+                    return;
+                }
+                if (name == "g" || name == "a" || name == "switch") {
                     children(node, now);
                     return;
                 }
@@ -646,7 +688,7 @@ namespace sc {
                     if (content.empty()) return;
                     font lettering = now.lettering;
                     lettering.size *= now.placed.scale_factor();
-                    text sample{std::move(content), now.placed.apply(point{number(node["x"]), number(node["y"])}), lettering};
+                    text sample{std::move(content), now.placed.apply(point{coordinate(node["x"], axis::x), coordinate(node["y"], axis::y)}), lettering};
                     if (now.anchor == "middle" || now.anchor == "end") {
                         const double width = label{sample}.bounds().width();
                         sample.position.x(sample.position.x() - (now.anchor == "middle" ? width / 2 : width));

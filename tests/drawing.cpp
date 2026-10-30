@@ -109,6 +109,25 @@ int main() {
         CHECK(inches.page() == (sc::size{96, 48})); // the height in proportion
     }
 
+    SECTION("Percentages are of the viewport: the viewBox, else the width and height");
+    {
+        // A QR code's light square, as sc-qrencode wrote it until 1.3.1: the whole viewBox, not 100 units.
+        const auto square = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29">)svg"
+                                                  R"svg(<rect width="100%" height="100%" fill="#fff"/></svg>)svg");
+        CHECK(near(shape_at(square, 0).bounds(), 0, 0, 29, 29));
+        const auto sized = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">)svg"
+                                                 R"svg(<rect x="10%" y="50%" width="25%" height="20%"/><line x1="0" y1="0" x2="50%" y2="100%" stroke="#000"/>)svg"
+                                                 R"svg(<circle cx="50%" cy="50%" r="10%"/></svg>)svg");
+        CHECK(near(shape_at(sized, 0).bounds(), 20, 50, 50, 20));
+        CHECK(near(shape_at(sized, 1).bounds(), 0, 0, 100, 100));
+        const double r = 0.1 * std::sqrt((200.0 * 200 + 100 * 100) / 2); // of the diagonal over √2
+        CHECK(near(shape_at(sized, 2).bounds(), 100 - r, 50 - r, 2 * r, 2 * r, 1e-6));
+        // An inner <svg> is a viewport of its own: its viewBox, or its width and height.
+        const auto inner = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">)svg"
+                                                 R"svg(<svg x="20" width="50%" height="50%"><rect width="100%" height="100%"/></svg></svg>)svg");
+        CHECK(near(shape_at(inner, 0).bounds(), 20, 0, 100, 50));
+    }
+
     SECTION("Clip paths");
     {
         const auto disc = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">)svg"

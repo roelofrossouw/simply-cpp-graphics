@@ -85,7 +85,8 @@ namespace sc {
         /// colours and opacity, presentation attributes and style="...". Shapes keep their kind
         /// where their transform allows; a mask is read as a clip of its shapes. The page is the
         /// width and height in pixels (units converted), the viewBox fitted into it; else the
-        /// viewBox's size. Linear gradients are read (stops, units, gradientTransform, href), and
+        /// viewBox's size. Percentages in shapes, images, text and <use> are of the viewport (the
+        /// viewBox, else the width and height; an inner <svg> has its own). Linear gradients are read (stops, units, gradientTransform, href), and
         /// images that are PNG or JPEG data: URIs (preserveAspectRatio too). Not read: radial
         /// gradients (their middle colour is), patterns, markers, filters, stylesheets.
         /// Throws std::runtime_error when it isn't SVG.
