@@ -1,8 +1,8 @@
 // Wrapping (sc::wrap) and setting a paragraph on a canvas (canvas::draw(paragraph)): where lines
 // break, where each is drawn, alignment, and what doesn't fit.
-#include <canvas.h>
-#include <font.h>
-#include <paragraph.h>
+#include <sc/graphics/canvas.h>
+#include <sc/graphics/font.h>
+#include <sc/graphics/paragraph.h>
 
 #include "sc_test.h"
 

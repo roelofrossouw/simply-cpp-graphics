@@ -1,8 +1,8 @@
 #pragma once
 
-#include <color.h>
-#include <point.h>
-#include <transform.h>
+#include <sc/core/color.h>
+#include <sc/core/point.h>
+#include <sc/core/transform.h>
 
 #include <optional>
 #include <vector>

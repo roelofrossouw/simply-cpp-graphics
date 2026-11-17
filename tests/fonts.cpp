@@ -1,6 +1,6 @@
 // Typefaces, their faces and fonts, against the fonts installed here (the build servers have
 // DejaVu, macOS its own): finding them, their styles, telling a substitute, metrics and widths.
-#include <font.h>
+#include <sc/graphics/font.h>
 
 #include "sc_test.h"
 

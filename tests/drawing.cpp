@@ -1,7 +1,7 @@
 // sc::drawing: reading and writing SVG, bounds, transforms and flips, recording, and what throws.
-#include <drawing.h>
+#include <sc/graphics/drawing.h>
 
-#include <base64.h>
+#include <sc/core/base64.h>
 
 #include "sc_test.h"
 

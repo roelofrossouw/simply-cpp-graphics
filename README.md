@@ -22,7 +22,7 @@ and an `sc::group` shape by shape. Coordinates are the canvas's own, from the
 top-left corner, y down.
 
 ```cpp
-#include <canvas.h>
+#include <sc/graphics/canvas.h>
 
 void label(sc::canvas &on, const sc::rect &box, const std::string &name) {
     on.draw(box);                                                       // black outline, 1 wide
@@ -119,7 +119,7 @@ colours. A VS15 (`❤︎`) asks for the text form. The apt package depends on
 searching its text.
 
 ```cpp
-#include <font.h>
+#include <sc/graphics/font.h>
 
 const sc::font body{"serif", 11};
 sc::font{"Roboto", 11}.available();     // false where Roboto isn't installed: it'd be substituted
@@ -139,7 +139,7 @@ Windows-1252 characters they're written in, ascender, descender, cap and x heigh
 them without embedding anything, and sc-litehtml lays text out with these metrics.
 
 ```cpp
-#include <standard_font.h>
+#include <sc/graphics/standard_font.h>
 
 const auto font = sc::standard_font::of(sc::font{"Arial", 12, 700});   // Helvetica-Bold
 font->width("Total", 12);                                              // as every reader draws it
@@ -149,7 +149,7 @@ sc::standard_font::encode(U'€');                                       // 0x80
 ## Paragraphs
 
 ```cpp
-#include <canvas.h>
+#include <sc/graphics/canvas.h>
 
 const auto rest = canvas.draw(sc::paragraph{text, {50, 100, 495, 600}, {"serif", 11}, sc::align::justify});
 if (!rest.empty()) { /* what didn't fit: on the next page */ }
@@ -166,7 +166,7 @@ that didn't fit. No kerning, as the engines draw none.
 ## Page sizes
 
 ```cpp
-#include <page.h>
+#include <sc/graphics/page.h>
 
 sc::page_dimensions(sc::page_size::A4);                                // 210 x 297 mm: 595.28 x 841.89 points
 sc::page_dimensions(sc::page_size::A3, sc::orientation::landscape);    // 420 x 297 mm

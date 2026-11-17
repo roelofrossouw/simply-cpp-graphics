@@ -1,7 +1,7 @@
 #pragma once
 
-#include "font_face.h"
-#include "typeface.h"
+#include <sc/graphics/font_face.h>
+#include <sc/graphics/typeface.h>
 
 #include <compare>
 #include <optional>

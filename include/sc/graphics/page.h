@@ -1,9 +1,9 @@
 #pragma once
 
-#include <distance.h>
-#include <size.h>
+#include <sc/core/distance.h>
+#include <sc/core/size.h>
 
-#include <core.h>
+#include <sc/core/core.h>
 
 #include <stdexcept>
 #include <string>

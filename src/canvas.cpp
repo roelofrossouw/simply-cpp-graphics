@@ -1,4 +1,4 @@
-#include "canvas.h"
+#include <sc/graphics/canvas.h>
 
 #include "glyphs.h"
 

@@ -1,8 +1,8 @@
 // sc::typeface, sc::font_face and sc::font's face(): fontconfig finds the fonts, FreeType reads them.
-#include "font.h"
-#include "font_face.h"
+#include <sc/graphics/font.h>
+#include <sc/graphics/font_face.h>
 #include "glyphs.h"
-#include "typeface.h"
+#include <sc/graphics/typeface.h>
 
 #include <fontconfig/fontconfig.h>
 #include <ft2build.h>
@@ -11,7 +11,7 @@
 #include FT_TRUETYPE_TABLES_H
 #include <hb.h>
 
-#include <core.h>
+#include <sc/core/core.h>
 
 #include <algorithm>
 #include <array>

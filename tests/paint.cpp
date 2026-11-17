@@ -1,6 +1,6 @@
 // sc::stroke, sc::fill and sc::appearance: what they hold, their defaults, colours converting to
 // them, and when they paint nothing.
-#include <paint.h>
+#include <sc/graphics/paint.h>
 
 #include "sc_test.h"
 

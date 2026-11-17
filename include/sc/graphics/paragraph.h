@@ -1,8 +1,8 @@
 #pragma once
 
-#include "font.h"
+#include <sc/graphics/font.h>
 
-#include <rect.h>
+#include <sc/core/rect.h>
 
 #include <functional>
 #include <string>

@@ -1,7 +1,7 @@
-#include "paragraph.h"
+#include <sc/graphics/paragraph.h>
 
-#include "canvas.h"
-#include "font.h"
+#include <sc/graphics/canvas.h>
+#include <sc/graphics/font.h>
 
 #include <algorithm>
 

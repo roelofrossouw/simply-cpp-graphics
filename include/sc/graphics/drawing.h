@@ -1,11 +1,11 @@
 #pragma once
 
-#include "canvas.h"
-#include "paint.h"
-#include "text.h"
+#include <sc/graphics/canvas.h>
+#include <sc/graphics/paint.h>
+#include <sc/graphics/text.h>
 
-#include <geometry.h>
-#include <transform.h>
+#include <sc/core/geometry.h>
+#include <sc/core/transform.h>
 
 #include <filesystem>
 #include <optional>

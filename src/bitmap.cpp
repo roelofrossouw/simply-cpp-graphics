@@ -1,6 +1,6 @@
-#include "bitmap.h"
+#include <sc/graphics/bitmap.h>
 
-#include <base64.h>
+#include <sc/core/base64.h>
 
 #include <algorithm>
 #include <cctype>

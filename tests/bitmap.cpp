@@ -1,9 +1,9 @@
 // sc::bitmap reads a PNG's or JPEG's size from its header, and comes from files and data: URIs.
-#include <bitmap.h>
+#include <sc/graphics/bitmap.h>
 
 #include "sc_test.h"
 
-#include <base64.h>
+#include <sc/core/base64.h>
 
 #include <stdexcept>
 #include <string>

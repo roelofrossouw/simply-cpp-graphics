@@ -1,6 +1,6 @@
 // Page sizes: ISO's in whole millimetres, Letter and Legal in inches, each in points, landscape swapping them, and sizes read by name.
-#include <distance.h>
-#include <page.h>
+#include <sc/core/distance.h>
+#include <sc/graphics/page.h>
 
 #include "sc_test.h"
 

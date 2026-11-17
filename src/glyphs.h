@@ -3,9 +3,9 @@
 // Text split into runs a font can draw, and colour glyphs (emoji) as bitmaps. Used by sc::font and
 // sc::canvas; not installed.
 
-#include "bitmap.h"
-#include "font.h"
-#include "font_face.h"
+#include <sc/graphics/bitmap.h>
+#include <sc/graphics/font.h>
+#include <sc/graphics/font_face.h>
 
 #include <optional>
 #include <string>

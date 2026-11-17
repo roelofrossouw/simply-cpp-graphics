@@ -1,7 +1,7 @@
 #pragma once
 
-#include "font.h"
-#include "point.h"
+#include <sc/graphics/font.h>
+#include <sc/core/point.h>
 
 #include <string>
 

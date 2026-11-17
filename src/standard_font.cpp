@@ -3,9 +3,9 @@
 // characters 32 to 255, in thousandths of the size (here taken from the metric-compatible Liberation
 // fonts, whose advances are Adobe's), and the vertical metrics.
 
-#include "standard_font.h"
+#include <sc/graphics/standard_font.h>
 
-#include <core.h>
+#include <sc/core/core.h>
 
 #include <array>
 #include <utility>

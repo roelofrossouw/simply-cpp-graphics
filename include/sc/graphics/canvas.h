@@ -1,22 +1,22 @@
 #pragma once
 
-#include "bitmap.h"
-#include "font.h"
-#include "paint.h"
-#include "paragraph.h"
-#include "text.h"
+#include <sc/graphics/bitmap.h>
+#include <sc/graphics/font.h>
+#include <sc/graphics/paint.h>
+#include <sc/graphics/paragraph.h>
+#include <sc/graphics/text.h>
 
-#include <circle.h>
-#include <geometry.h>
-#include <color.h>
-#include <line.h>
-#include <path.h>
-#include <point.h>
-#include <polygon.h>
-#include <rect.h>
-#include <rotated_rect.h>
-#include <rounded_rect.h>
-#include <transform.h>
+#include <sc/core/circle.h>
+#include <sc/core/geometry.h>
+#include <sc/core/color.h>
+#include <sc/core/line.h>
+#include <sc/core/path.h>
+#include <sc/core/point.h>
+#include <sc/core/polygon.h>
+#include <sc/core/rect.h>
+#include <sc/core/rotated_rect.h>
+#include <sc/core/rounded_rect.h>
+#include <sc/core/transform.h>
 
 #include <string>
 #include <vector>
@@ -165,4 +165,4 @@ namespace sc {
 }
 
 // sc::drawing is a canvas too; including it here keeps canvas.h the one header to draw with.
-#include "drawing.h"
+#include <sc/graphics/drawing.h>

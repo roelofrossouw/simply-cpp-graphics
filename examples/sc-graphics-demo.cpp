@@ -5,10 +5,10 @@
 #include <iostream>
 #include <string>
 
-#include <sc.h>
+#include <sc/core/sc.h>
 
-#include <canvas.h>
-#include <paragraph.h>
+#include <sc/graphics/canvas.h>
+#include <sc/graphics/paragraph.h>
 
 namespace {
     // [readme]

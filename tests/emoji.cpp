@@ -1,7 +1,7 @@
 // Text a font can't draw: its characters drawn in a face that has them, emoji as colour bitmaps
 // (when a colour emoji font is installed), measured as they're drawn.
-#include <canvas.h>
-#include <typeface.h>
+#include <sc/graphics/canvas.h>
+#include <sc/graphics/typeface.h>
 
 #include "sc_test.h"
 

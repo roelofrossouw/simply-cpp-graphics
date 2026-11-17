@@ -1,8 +1,8 @@
 // sc::canvas turns every draw() into a few primitives; a canvas that records them shows which, with
 // what, and what it leaves out.
-#include <canvas.h>
+#include <sc/graphics/canvas.h>
 
-#include <base64.h>
+#include <sc/core/base64.h>
 
 #include "sc_test.h"
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "font_face.h"
+#include <sc/graphics/font_face.h>
 
 #include <optional>
 #include <string>

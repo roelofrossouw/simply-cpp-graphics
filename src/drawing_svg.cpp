@@ -1,8 +1,8 @@
 // Reading SVG into an sc::drawing, and writing one out as SVG.
 
-#include "drawing.h"
+#include <sc/graphics/drawing.h>
 
-#include <xml.h>
+#include <sc/web/xml.h>
 
 #include <algorithm>
 #include <cctype>

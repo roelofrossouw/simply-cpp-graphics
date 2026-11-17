@@ -1,4 +1,4 @@
-#include "paint.h"
+#include <sc/graphics/paint.h>
 
 #include <algorithm>
 #include <utility>
