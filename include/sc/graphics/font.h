@@ -16,7 +16,7 @@ namespace sc {
     /// weight from 100 (thin) to 900 (black), 400 regular and 700 bold; style, when set, is a style
     /// name ("Condensed Bold") that wins over weight and italic where the canvas can use it.
     ///
-    /// Its measurements are those of face(), the closest installed face, at this size: how sc-pdf
+    /// Its measurements are those of face(), the closest installed face, at this size: how sc-pdflite
     /// and sc-mupdf draw it. Canvases with fonts of their own (sc-image's) measure with
     /// canvas::text_width() instead.
     struct font {

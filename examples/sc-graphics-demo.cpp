@@ -1,4 +1,4 @@
-// sc::canvas is the drawing interface sc-image, sc-pdf and sc-mupdf implement. This demo is a canvas
+// sc::canvas is the drawing interface sc-image, sc-pdflite and sc-mupdf implement. This demo is a canvas
 // that only prints what it's asked to paint: every shape, text and SVG drawing comes down to a few
 // primitives.
 
@@ -74,7 +74,7 @@ int main() {
         const sc::font body{"serif", 12};
         SC_SHOW(body.available());
         SC_SHOW(sc::font{"No Such Font"}.available()); // fontconfig would substitute one
-        SC_SHOW(body.width("simply-cpp")); // points at 12 pt: what sc-pdf and sc-mupdf draw
+        SC_SHOW(body.width("simply-cpp")); // points at 12 pt: what sc-pdflite and sc-mupdf draw
         SC_SHOW(body.cap_height());
         SC_SHOW(body.line_height());
         if (const auto face = body.face()) {

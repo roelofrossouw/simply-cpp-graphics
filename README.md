@@ -8,7 +8,7 @@ so the same calls draw on any of them.
 | Engine | Module | Draws with | Partly transparent colours |
 |---|---|---|---|
 | `sc::image` | [sc-image](https://github.com/roelofrossouw/simply-cpp-image) | OpenCV, in pixels | painted opaque |
-| `sc::pdf` | [sc-pdf](https://github.com/roelofrossouw/simply-cpp-pdf) | sc-pdflite, in points, as vectors (Apache-2.0) | as they are |
+| `sc::pdflite::writer` | [sc-pdflite](https://github.com/roelofrossouw/simply-cpp-pdflite) | sc-pdflite, in points, as vectors (Apache-2.0) | as they are |
 | `sc::mupdf::writer` | [sc-mupdf](https://github.com/roelofrossouw/simply-cpp-mupdf) | MuPDF, in points, as vectors (AGPL-3.0) | as they are |
 
 **Documentation:** the [simply-cpp wiki](https://github.com/roelofrossouw/simply-cpp/wiki) has a [Graphics guide](https://github.com/roelofrossouw/simply-cpp/wiki/Graphics) and the [sc-graphics reference](https://github.com/roelofrossouw/simply-cpp/wiki/Reference-sc-graphics), plus [getting started](https://github.com/roelofrossouw/simply-cpp/wiki/Getting-Started) for the whole suite.
@@ -104,7 +104,7 @@ Installed fonts, found through fontconfig and read with FreeType:
 | `sc::font_face` (`font_face.h`) | One style of it, in one file | DejaVu Sans Bold, `DejaVuSans-Bold.ttf` |
 | `sc::font` (`font.h`) | What text is drawn in: family, size, weight, italic, style | DejaVu Sans Bold at 12 pt |
 
-A font's measurements are its closest installed face at its size, as sc-pdf
+A font's measurements are its closest installed face at its size, as sc-pdflite
 and sc-mupdf draw it; `available()` tells whether its family is installed
 rather than substituted.
 
@@ -135,7 +135,7 @@ sc::typeface::installed();              // every family on the machine
 
 `sc::standard_font` (`standard_font.h`) is one of the fonts every PDF reader has, Helvetica, Times
 and Courier in their four styles, with Adobe's metrics (the Core 14 AFM files): widths for the
-Windows-1252 characters they're written in, ascender, descender, cap and x heights. sc-pdf writes
+Windows-1252 characters they're written in, ascender, descender, cap and x heights. sc-pdflite writes
 them without embedding anything, and sc-litehtml lays text out with these metrics.
 
 ```cpp
@@ -257,4 +257,4 @@ sudo apt -y install simply-cpp-graphics-dev
 ```
 
 Usually you get it with an engine: `simply-cpp-image-dev`,
-`simply-cpp-pdf-dev` and `simply-cpp-mupdf-dev` depend on it.
+`simply-cpp-pdflite-dev` and `simply-cpp-mupdf-dev` depend on it.

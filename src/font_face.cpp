@@ -222,7 +222,7 @@ namespace sc {
                     result.descender = -face->descender;
                     result.line_height = face->height;
                     // x and cap heights as the font declares them (OS/2 version 2 and later), else
-                    // the letters' own height, as sc-pdf measures them.
+                    // the letters' own height, as sc-pdflite measures them.
                     const auto *os2 = static_cast<const TT_OS2 *>(FT_Get_Sfnt_Table(face, FT_SFNT_OS2));
                     result.x_height = os2 && os2->version >= 2 && os2->sxHeight > 0 ? os2->sxHeight : glyph_top(face, 'x');
                     result.cap_height = os2 && os2->version >= 2 && os2->sCapHeight > 0 ? os2->sCapHeight : glyph_top(face, 'H');

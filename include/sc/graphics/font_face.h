@@ -14,7 +14,7 @@ namespace sc {
     ///     const auto face = sc::font{"DejaVu Sans", 11, 700}.face();
     ///     face->typeface().name();      // "DejaVu Sans"
     ///     face->weight();               // 700, its own (the closest the typeface has)
-    ///     face->width("Total due", 11); // at 11 points (or pixels): as sc-pdf and sc-mupdf draw it
+    ///     face->width("Total due", 11); // at 11 points (or pixels): as sc-pdflite and sc-mupdf draw it
     ///
     /// Measurements take the size (the em, in the canvas's units) and are in those units. Widths are
     /// the glyphs' advances, without kerning, as the canvases draw text. A font_face is a cheap

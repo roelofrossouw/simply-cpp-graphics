@@ -31,7 +31,7 @@ namespace sc {
     [[nodiscard]] std::vector<std::string> wrap(std::string_view content, double width,
                                                 const std::function<double(std::string_view)> &measure);
 
-    /// The same, measured in font (its installed face, font.width()): how sc-pdf and sc-mupdf draw it.
+    /// The same, measured in font (its installed face, font.width()): how sc-pdflite and sc-mupdf draw it.
     /// Without any font installed, only newlines break lines.
     [[nodiscard]] std::vector<std::string> wrap(std::string_view content, const font &font, double width);
 }

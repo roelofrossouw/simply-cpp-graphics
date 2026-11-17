@@ -9,7 +9,7 @@
 
 namespace sc {
     // Transparency is the colour's alpha, for strokes, fills and text alike: 0 leaves the part out.
-    // sc-pdf and sc-mupdf paint partly transparent colours as they are; sc-image paints them opaque.
+    // sc-pdflite and sc-mupdf paint partly transparent colours as they are; sc-image paints them opaque.
 
     /// How overlapping parts of a filled path count as inside: nonzero (the default) or even-odd (a
     /// subpath inside another cuts a hole, as in a ring).
@@ -91,7 +91,7 @@ namespace sc {
     ///
     ///     canvas.draw(ring, sc::appearance::filled(sc::fill{sc::color::Blue, sc::fill_rule::even_odd}));
     ///
-    /// sc-image draws gradients; sc-pdf and sc-mupdf fill with the gradient's middle colour for now.
+    /// sc-image draws gradients; sc-pdflite and sc-mupdf fill with the gradient's middle colour for now.
     /// Planned: radial gradients, patterns and images (an engine that can't do one fills with the
     /// nearest flat colour).
     class fill {

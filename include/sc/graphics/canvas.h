@@ -24,7 +24,7 @@
 namespace sc {
     class drawing;
 
-    /// Something to draw on (an sc::image, an sc::pdf, an sc::drawing), so the same calls draw on any.
+    /// Something to draw on (an sc::image, an sc::pdflite::writer, an sc::drawing), so the same calls draw on any.
     /// Shapes take an sc::appearance (paint.h), a line a stroke, text a fill. Coordinates are the
     /// canvas's own (pixels on an image, points on a PDF), from the top-left corner, y down.
     ///

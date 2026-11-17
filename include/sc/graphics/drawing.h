@@ -163,7 +163,7 @@ namespace sc {
 
         void paint_bitmap(const bitmap &picture, const transform &placement) override;
 
-        // By the font's measurements (font.h), as sc-pdf and sc-mupdf measure.
+        // By the font's measurements (font.h), as sc-pdflite and sc-mupdf measure.
         double measure_width(const text &sample) override;
 
         double measure_x_height(const font &font) override;
