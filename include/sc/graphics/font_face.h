@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <sc/core/path.h>
+#include <sc/core/point.h>
 #include <string>
 #include <string_view>
 
@@ -58,6 +60,12 @@ namespace sc {
 
         /// Whether it has a glyph for every character of text (else those show as boxes, or not at all).
         [[nodiscard]] bool covers(std::string_view text) const;
+
+        /// The outlines of text's glyphs at size, its pen starting at baseline (the left end of the
+        /// baseline), y downward as on a canvas, each glyph advanced as width() measures it: what an
+        /// outline renderer fills (nonzero) to draw the text. Empty for blank text, a colour (bitmap)
+        /// font or a file that can't be read; a missing glyph adds nothing but its advance.
+        [[nodiscard]] path outline(std::string_view text, double size, point baseline = {}) const;
 
         /// The same file and face.
         bool operator==(const font_face &other) const { return file() == other.file() && index() == other.index(); }

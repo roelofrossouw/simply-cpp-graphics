@@ -9,6 +9,7 @@
 #include FT_FREETYPE_H
 #include FT_ADVANCES_H
 #include FT_TRUETYPE_TABLES_H
+#include FT_OUTLINE_H
 #include <hb.h>
 
 #include <sc/core/core.h>
@@ -287,6 +288,62 @@ namespace sc {
             if (FT_Get_Char_Index(f.face, code) == 0) return false;
         }
         return true;
+    }
+
+    path font_face::outline(const std::string_view text, const double size, const point baseline) const {
+        path result;
+        const auto &f = open(*this);
+        if (!f.face || !FT_IS_SCALABLE(f.face)) return result;
+        // Font units to the canvas: scaled, y flipped, from the pen on the baseline.
+        struct decomposing {
+            path *into;
+            double scale, x, y;
+            point last;
+
+            [[nodiscard]] point at(const FT_Vector *v) const { return {x + v->x * scale, y - v->y * scale}; }
+        } walk{&result, size / f.units_per_em, baseline.x(), baseline.y(), {}};
+        FT_Outline_Funcs funcs{};
+        funcs.move_to = [](const FT_Vector *to, void *user) {
+            auto &w = *static_cast<decomposing *>(user);
+            if (!w.into->empty()) w.into->close();
+            w.last = w.at(to);
+            w.into->move_to(w.last);
+            return 0;
+        };
+        funcs.line_to = [](const FT_Vector *to, void *user) {
+            auto &w = *static_cast<decomposing *>(user);
+            w.last = w.at(to);
+            w.into->line_to(w.last);
+            return 0;
+        };
+        funcs.conic_to = [](const FT_Vector *control, const FT_Vector *to, void *user) {
+            // A quadratic curve as the cubic that draws it exactly.
+            auto &w = *static_cast<decomposing *>(user);
+            const point c = w.at(control), end = w.at(to);
+            const point first{w.last.x() + 2.0 / 3 * (c.x() - w.last.x()), w.last.y() + 2.0 / 3 * (c.y() - w.last.y())};
+            const point second{end.x() + 2.0 / 3 * (c.x() - end.x()), end.y() + 2.0 / 3 * (c.y() - end.y())};
+            w.into->cubic_to(first, second, end);
+            w.last = end;
+            return 0;
+        };
+        funcs.cubic_to = [](const FT_Vector *first, const FT_Vector *second, const FT_Vector *to, void *user) {
+            auto &w = *static_cast<decomposing *>(user);
+            w.last = w.at(to);
+            w.into->cubic_to(w.at(first), w.at(second), w.last);
+            return 0;
+        };
+        for (std::size_t i = 0; i < text.size();) {
+            const char32_t code = next_codepoint(text, i);
+            const FT_UInt glyph = FT_Get_Char_Index(f.face, code);
+            if (glyph != 0 && FT_Load_Glyph(f.face, glyph, FT_LOAD_NO_SCALE | FT_LOAD_NO_HINTING) == 0 &&
+                f.face->glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
+                FT_Outline_Decompose(&f.face->glyph->outline, &funcs, &walk);
+                if (!result.empty()) result.close();
+            }
+            FT_Fixed advance = 0;
+            if (FT_Get_Advance(f.face, glyph, FT_LOAD_NO_SCALE, &advance) == 0) walk.x += static_cast<double>(advance) * walk.scale;
+        }
+        return result;
     }
 
     std::optional<typeface> typeface::find(const std::string_view name) {
