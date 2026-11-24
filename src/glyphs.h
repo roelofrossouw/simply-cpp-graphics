@@ -1,7 +1,7 @@
 #pragma once
 
-// Text split into runs a font can draw, and colour glyphs (emoji) as bitmaps. Used by sc::font and
-// sc::canvas; not installed.
+// Text split into runs a font can draw, and colour glyphs (emoji) as bitmaps. Used by sc::graphics::font and
+// sc::graphics::canvas; not installed.
 
 #include <sc/graphics/bitmap.h>
 #include <sc/graphics/font.h>
@@ -12,7 +12,7 @@
 #include <string_view>
 #include <vector>
 
-namespace sc::detail {
+namespace sc::graphics::detail {
     // A piece of text and the face that draws it: the font's own, another that has its characters
     // (fallback), or a colour (emoji) face, whose glyphs are bitmaps.
     struct text_run {

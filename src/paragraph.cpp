@@ -5,7 +5,7 @@
 
 #include <algorithm>
 
-namespace sc {
+namespace sc::graphics {
     namespace {
         // A line: where it is in the content, and whether its paragraph (up to a newline) ends with it.
         struct line_range {
@@ -92,9 +92,9 @@ namespace sc {
         return wrap(content, width, [&](const std::string_view text) { return font.width(text); });
     }
 
-    std::string canvas::draw(const paragraph &text, const sc::fill &fill) {
+    std::string canvas::draw(const paragraph &text, const sc::graphics::fill &fill) {
         if (text.content.empty() || text.font.size <= 0) return {};
-        const auto measure = [&](const std::string_view part) { return text_width(sc::text{std::string{part}, {}, text.font}); };
+        const auto measure = [&](const std::string_view part) { return text_width(sc::graphics::text{std::string{part}, {}, text.font}); };
         const auto lines = wrap_lines(text.content, text.area.width(), measure);
 
         // The first baseline sits the font's ascender below the top, so nothing rises out of the
@@ -121,7 +121,7 @@ namespace sc {
                     const double gap = (text.area.width() - used) / static_cast<double>(parts.size() - 1);
                     double x = text.area.left();
                     for (const auto part: parts) {
-                        draw(sc::text{std::string{part}, {x, baseline}, text.font}, fill);
+                        draw(sc::graphics::text{std::string{part}, {x, baseline}, text.font}, fill);
                         x += measure(part) + gap;
                     }
                     continue;
@@ -131,7 +131,7 @@ namespace sc {
             double x = text.area.left();
             if (text.align == align::right) x = text.area.right() - width;
             else if (text.align == align::center) x = text.area.left() + (text.area.width() - width) / 2;
-            draw(sc::text{std::string{content}, {x, baseline}, text.font}, fill);
+            draw(sc::graphics::text{std::string{content}, {x, baseline}, text.font}, fill);
         }
         return {};
     }

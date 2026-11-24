@@ -1,4 +1,4 @@
-// sc::bitmap reads a PNG's or JPEG's size from its header, and comes from files and data: URIs.
+// sc::graphics::bitmap reads a PNG's or JPEG's size from its header, and comes from files and data: URIs.
 #include <sc/graphics/bitmap.h>
 
 #include "sc_test.h"
@@ -23,42 +23,42 @@ namespace {
 int main() {
     SECTION("A PNG's size and type");
     {
-        const sc::bitmap picture{png};
-        CHECK(picture.type() == sc::bitmap::format::png);
+        const sc::graphics::bitmap picture{png};
+        CHECK(picture.type() == sc::graphics::bitmap::format::png);
         CHECK_EQ(picture.size(), (sc::size{3, 2}));
         CHECK_EQ(std::string{picture.media_type()}, std::string{"image/png"});
-        CHECK(sc::bitmap::recognised(png));
+        CHECK(sc::graphics::bitmap::recognised(png));
     }
 
     SECTION("A JPEG's size from its start-of-frame marker");
     {
-        const sc::bitmap picture{jpeg()};
-        CHECK(picture.type() == sc::bitmap::format::jpeg);
+        const sc::graphics::bitmap picture{jpeg()};
+        CHECK(picture.type() == sc::graphics::bitmap::format::jpeg);
         CHECK_EQ(picture.size(), (sc::size{640, 480}));
     }
 
     SECTION("data: URIs, base64 and the other way round");
     {
-        const sc::bitmap picture{png};
+        const sc::graphics::bitmap picture{png};
         CHECK(picture.data_uri().starts_with("data:image/png;base64,"));
-        CHECK(sc::bitmap::from_data_uri(picture.data_uri()) == picture);
-        CHECK_EQ(sc::bitmap::from_data_uri(picture.data_uri()).size(), (sc::size{3, 2}));
+        CHECK(sc::graphics::bitmap::from_data_uri(picture.data_uri()) == picture);
+        CHECK_EQ(sc::graphics::bitmap::from_data_uri(picture.data_uri()).size(), (sc::size{3, 2}));
     }
 
     SECTION("Copies share the bytes");
     {
-        const sc::bitmap picture{png};
-        const sc::bitmap copy = picture;
+        const sc::graphics::bitmap picture{png};
+        const sc::graphics::bitmap copy = picture;
         CHECK_EQ(&copy.bytes(), &picture.bytes());
     }
 
     SECTION("Mistakes");
     {
-        CHECK_THROWS_AS(sc::bitmap{"GIF89a"}, std::runtime_error);
-        CHECK_THROWS_AS(sc::bitmap{png.substr(0, 10)}, std::runtime_error);
-        CHECK_THROWS_AS(sc::bitmap::from_data_uri("image/png;base64,abc"), std::runtime_error);
-        CHECK_THROWS_AS(sc::bitmap::load("/nonexistent.png"), std::runtime_error);
-        CHECK(!sc::bitmap::recognised("<svg/>"));
+        CHECK_THROWS_AS(sc::graphics::bitmap{"GIF89a"}, std::runtime_error);
+        CHECK_THROWS_AS(sc::graphics::bitmap{png.substr(0, 10)}, std::runtime_error);
+        CHECK_THROWS_AS(sc::graphics::bitmap::from_data_uri("image/png;base64,abc"), std::runtime_error);
+        CHECK_THROWS_AS(sc::graphics::bitmap::load("/nonexistent.png"), std::runtime_error);
+        CHECK(!sc::graphics::bitmap::recognised("<svg/>"));
     }
     TEST_SUMMARY();
 }

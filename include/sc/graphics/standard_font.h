@@ -7,17 +7,17 @@
 #include <string>
 #include <string_view>
 
-namespace sc {
+namespace sc::graphics {
     /// One of PDF's built-in fonts: Helvetica, Times and Courier, each upright, bold, italic and bold
     /// italic, which every PDF reader has, so a PDF can use them without embedding anything. Their
     /// metrics are Adobe's (the Core 14 AFM files): widths in thousandths of the size for the
     /// Windows-1252 characters they're written in (WinAnsiEncoding), ascender, descender, cap
     /// and x heights.
     ///
-    ///     const sc::standard_font bold{sc::standard_font::face::helvetica_bold};
+    ///     const sc::graphics::standard_font bold{sc::graphics::standard_font::face::helvetica_bold};
     ///     bold.name();                           // "Helvetica-Bold"
     ///     bold.width("Total", 12);               // as every reader draws it
-    ///     sc::standard_font::of(sc::font{"Arial", 12, 700});   // the same, for a CSS-style font
+    ///     sc::graphics::standard_font::of(sc::graphics::font{"Arial", 12, 700});   // the same, for a CSS-style font
     ///
     /// The faces are an enum, so a misspelt font is a compile error rather than a missing font.
     /// (PDF has two more built-in fonts, Symbol and ZapfDingbats, with encodings of their own; they

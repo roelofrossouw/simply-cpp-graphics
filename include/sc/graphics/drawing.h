@@ -4,8 +4,8 @@
 #include <sc/graphics/paint.h>
 #include <sc/graphics/text.h>
 
-#include <sc/core/geometry.h>
-#include <sc/core/transform.h>
+#include <sc/geometry/geometry.h>
+#include <sc/geometry/transform.h>
 
 #include <filesystem>
 #include <optional>
@@ -14,11 +14,11 @@
 #include <variant>
 #include <vector>
 
-namespace sc {
+namespace sc::graphics {
     /// A shape and how it looks, in a drawing; clip, when set, limits it to inside the clip.
     struct drawable {
         sc::shape shape;
-        sc::appearance appearance;
+        sc::graphics::appearance appearance;
         std::optional<path> clip;
 
         /// The shape's bounds within the clip's, the outline's width not included.
@@ -29,8 +29,8 @@ namespace sc {
 
     /// A line of text and its fill, in a drawing.
     struct label {
-        sc::text text;
-        sc::fill fill{sc::color{0, 0, 0}}; // black; a literal, as paint.h's defaults are
+        sc::graphics::text text;
+        sc::graphics::fill fill{sc::color{0, 0, 0}}; // black; a literal, as paint.h's defaults are
         std::optional<path> clip;
 
         /// The box its glyphs take: its advance wide, from the font's ascender to its descender
@@ -43,7 +43,7 @@ namespace sc {
     /// A raster image in a drawing: its unit square ((0, 0) its top-left corner, (1, 1) its
     /// bottom-right) through placement, so it moves, turns and mirrors as shapes do.
     struct figure {
-        sc::bitmap bitmap;
+        sc::graphics::bitmap bitmap;
         sc::transform placement;
         std::optional<path> clip;
 
@@ -60,9 +60,9 @@ namespace sc {
     /// canvas, transform or flip it as a whole, read or write it as SVG. It's a canvas too: drawing on
     /// it records what's drawn, to measure, flip or replay later.
     ///
-    ///     sc::drawing badge{{200, 100}};
-    ///     badge.add(sc::rounded_rect{sc::rect{0, 0, 200, 100}, 12}, sc::appearance::filled(sc::color{"steelblue"}));
-    ///     badge.add(sc::text{"simply-cpp", {20, 60}, sc::font::bold("sans-serif", 24)}, sc::color::White);
+    ///     sc::graphics::drawing badge{{200, 100}};
+    ///     badge.add(sc::rounded_rect{sc::rect{0, 0, 200, 100}, 12}, sc::graphics::appearance::filled(sc::color{"steelblue"}));
+    ///     badge.add(sc::graphics::text{"simply-cpp", {20, 60}, sc::graphics::font::bold("sans-serif", 24)}, sc::color::White);
     ///     badge.flip_horizontal();                      // mirrored across its page
     ///     pdf.draw(badge, sc::rect{50, 50, 200, 100});  // scaled to fit, centred
     ///     badge.save_svg("badge.svg");
@@ -111,13 +111,13 @@ namespace sc {
 
         /// Adds a shape as it is (drawing it through the canvas calls records the primitives: a
         /// rect as a polygon).
-        void add(sc::shape shape, sc::appearance look = {}, std::optional<path> clip = {});
+        void add(sc::shape shape, sc::graphics::appearance look = {}, std::optional<path> clip = {});
 
         /// Adds a line of text, black by default.
-        void add(sc::text text, sc::fill fill = sc::color{0, 0, 0}, std::optional<path> clip = {});
+        void add(sc::graphics::text text, sc::graphics::fill fill = sc::color{0, 0, 0}, std::optional<path> clip = {});
 
         /// Adds a raster image stretched to fill position.
-        void add(sc::bitmap picture, const rect &position, std::optional<path> clip = {});
+        void add(sc::graphics::bitmap picture, const rect &position, std::optional<path> clip = {});
 
         void add(item thing);
 
@@ -149,17 +149,17 @@ namespace sc {
 
     protected:
         // Recording: each primitive becomes an item, inside the innermost clip pushed.
-        void paint_polygon(const polygon &shape, const sc::appearance &look) override;
+        void paint_polygon(const polygon &shape, const sc::graphics::appearance &look) override;
 
-        void paint_circle(const circle &shape, const sc::appearance &look) override;
+        void paint_circle(const circle &shape, const sc::graphics::appearance &look) override;
 
-        void paint_line(const line &shape, const sc::stroke &stroke) override;
+        void paint_line(const line &shape, const sc::graphics::stroke &stroke) override;
 
-        void paint_text(const text &sample, const sc::fill &fill) override;
+        void paint_text(const text &sample, const sc::graphics::fill &fill) override;
 
-        void paint_rounded_rect(const rounded_rect &shape, const sc::appearance &look) override;
+        void paint_rounded_rect(const rounded_rect &shape, const sc::graphics::appearance &look) override;
 
-        void paint_path(const path &shape, const sc::appearance &look) override;
+        void paint_path(const path &shape, const sc::graphics::appearance &look) override;
 
         void paint_bitmap(const bitmap &picture, const transform &placement) override;
 

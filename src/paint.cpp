@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <utility>
 
-namespace sc {
+namespace sc::graphics {
     linear_gradient::linear_gradient(const point from, const point to, std::vector<stop> stops)
         : from_(from), to_(to), stops_(std::move(stops)) {
         for (auto &each: stops_) each.offset = std::clamp(each.offset, 0.0, 1.0);

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <utility>
 
-namespace sc {
+namespace sc::graphics {
     namespace {
         // A label's font measurements, estimated from its size when the font isn't installed.
         double ascender_of(const font &spec) {
@@ -47,15 +47,15 @@ namespace sc {
     drawing::drawing(const sc::size page) : page_(page) {
     }
 
-    void drawing::add(sc::shape shape, sc::appearance look, std::optional<path> clip) {
+    void drawing::add(sc::shape shape, sc::graphics::appearance look, std::optional<path> clip) {
         items_.emplace_back(drawable{std::move(shape), std::move(look), std::move(clip)});
     }
 
-    void drawing::add(sc::text text, sc::fill fill, std::optional<path> clip) {
+    void drawing::add(sc::graphics::text text, sc::graphics::fill fill, std::optional<path> clip) {
         items_.emplace_back(label{std::move(text), std::move(fill), std::move(clip)});
     }
 
-    void drawing::add(sc::bitmap picture, const rect &position, std::optional<path> clip) {
+    void drawing::add(sc::graphics::bitmap picture, const rect &position, std::optional<path> clip) {
         items_.emplace_back(figure{std::move(picture), figure::filling(position), std::move(clip)});
     }
 
@@ -83,9 +83,9 @@ namespace sc {
             if (auto *shape = std::get_if<drawable>(&item)) {
                 const auto &stroke = shape->appearance.stroke();
                 shape->shape = change.apply(shape->shape);
-                shape->appearance.stroke(sc::stroke{stroke.colour(), stroke.width() * scale});
+                shape->appearance.stroke(sc::graphics::stroke{stroke.colour(), stroke.width() * scale});
                 if (const auto &gradient = shape->appearance.fill().gradient())
-                    shape->appearance.fill(sc::fill{gradient->transformed(change), shape->appearance.fill().rule()});
+                    shape->appearance.fill(sc::graphics::fill{gradient->transformed(change), shape->appearance.fill().rule()});
                 shape->clip = moved_clip(shape->clip);
             } else if (auto *image = std::get_if<figure>(&item)) {
                 image->placement = image->placement.then(change);
@@ -97,7 +97,7 @@ namespace sc {
                 unclipped.clip.reset();
                 const rect landed = change.apply(unclipped.bounds()).bounds();
                 text.text.font.size *= scale;
-                if (const auto &gradient = text.fill.gradient()) text.fill = sc::fill{gradient->transformed(change), text.fill.rule()};
+                if (const auto &gradient = text.fill.gradient()) text.fill = sc::graphics::fill{gradient->transformed(change), text.fill.rule()};
                 text.text.position = {landed.left(), landed.top() + ascender_of(text.text.font)};
                 text.clip = moved_clip(text.clip);
             }
@@ -118,17 +118,17 @@ namespace sc {
         }
     }
 
-    void drawing::paint_polygon(const polygon &shape, const sc::appearance &look) { add(shape, look, innermost(clips_)); }
+    void drawing::paint_polygon(const polygon &shape, const sc::graphics::appearance &look) { add(shape, look, innermost(clips_)); }
 
-    void drawing::paint_circle(const circle &shape, const sc::appearance &look) { add(shape, look, innermost(clips_)); }
+    void drawing::paint_circle(const circle &shape, const sc::graphics::appearance &look) { add(shape, look, innermost(clips_)); }
 
-    void drawing::paint_line(const line &shape, const sc::stroke &stroke) { add(shape, stroke, innermost(clips_)); }
+    void drawing::paint_line(const line &shape, const sc::graphics::stroke &stroke) { add(shape, stroke, innermost(clips_)); }
 
-    void drawing::paint_text(const text &sample, const sc::fill &fill) { add(sample, fill, innermost(clips_)); }
+    void drawing::paint_text(const text &sample, const sc::graphics::fill &fill) { add(sample, fill, innermost(clips_)); }
 
-    void drawing::paint_rounded_rect(const rounded_rect &shape, const sc::appearance &look) { add(shape, look, innermost(clips_)); }
+    void drawing::paint_rounded_rect(const rounded_rect &shape, const sc::graphics::appearance &look) { add(shape, look, innermost(clips_)); }
 
-    void drawing::paint_path(const path &shape, const sc::appearance &look) { add(shape, look, innermost(clips_)); }
+    void drawing::paint_path(const path &shape, const sc::graphics::appearance &look) { add(shape, look, innermost(clips_)); }
 
     void drawing::paint_bitmap(const bitmap &picture, const transform &placement) {
         items_.emplace_back(figure{picture, placement, innermost(clips_)});

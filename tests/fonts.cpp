@@ -9,7 +9,7 @@
 
 int main() {
     SECTION("A font finds its face, and the face its typeface");
-    const sc::font sans{"sans-serif", 10};
+    const sc::graphics::font sans{"sans-serif", 10};
     const auto face = sans.face();
     CHECK(face.has_value());
     if (!face) TEST_SUMMARY();
@@ -24,9 +24,9 @@ int main() {
         const auto family = face->typeface();
         auto upper = family.name();
         for (auto &c: upper) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-        CHECK(sc::typeface::find(upper).has_value());
-        if (const auto found = sc::typeface::find(upper)) CHECK_EQ(found->name(), family.name());
-        CHECK(!sc::typeface::find("No Such Font Family 7Q").has_value());
+        CHECK(sc::graphics::typeface::find(upper).has_value());
+        if (const auto found = sc::graphics::typeface::find(upper)) CHECK_EQ(found->name(), family.name());
+        CHECK(!sc::graphics::typeface::find("No Such Font Family 7Q").has_value());
         const auto faces = family.faces();
         CHECK(!faces.empty());
         for (const auto &each: faces) {
@@ -34,7 +34,7 @@ int main() {
             CHECK_BETWEEN(each.weight(), 1, 1000);
         }
         bool installed = false;
-        for (const auto &each: sc::typeface::installed()) installed = installed || each == family;
+        for (const auto &each: sc::graphics::typeface::installed()) installed = installed || each == family;
         CHECK(installed);
     }
 
@@ -53,10 +53,10 @@ int main() {
 
     SECTION("A family that isn't installed: a substitute, not available");
     {
-        const sc::font missing{"No Such Font Family 7Q", 10};
+        const sc::graphics::font missing{"No Such Font Family 7Q", 10};
         CHECK(missing.face().has_value()); // fontconfig answers with something
         CHECK(!missing.available());
-        if (const auto substitute = missing.face()) CHECK((sc::font{substitute->family(), 10}.available()));
+        if (const auto substitute = missing.face()) CHECK((sc::graphics::font{substitute->family(), 10}.available()));
     }
 
     SECTION("Metrics, at the font's size");
@@ -77,7 +77,7 @@ int main() {
         CHECK_BETWEEN(sans.width("AV"), sans.width("A") + sans.width("V") - 1e-9, sans.width("A") + sans.width("V") + 1e-9);
         CHECK_BETWEEN(face->width("Hello, world", 20), 2 * sans.width("Hello, world") - 1e-9, 2 * sans.width("Hello, world") + 1e-9);
         CHECK_LT(0.0, sans.width("€ é ü")); // UTF-8
-        const sc::font bold = sc::font::bold("sans-serif", 10);
+        const sc::graphics::font bold = sc::graphics::font::bold("sans-serif", 10);
         CHECK_LT(sans.width("Hello"), bold.width("Hello") + 1e-9); // bold is at least as wide
     }
 

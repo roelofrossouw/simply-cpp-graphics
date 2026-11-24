@@ -1,4 +1,4 @@
-// Reading SVG into an sc::drawing, and writing one out as SVG.
+// Reading SVG into an sc::graphics::drawing, and writing one out as SVG.
 
 #include <sc/graphics/drawing.h>
 
@@ -17,7 +17,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace sc {
+namespace sc::graphics {
     namespace {
         bool is_space(const char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == ','; }
 
@@ -453,8 +453,8 @@ namespace sc {
 
             [[nodiscard]] appearance look(const context &now, const bool fills = true) const {
                 const double scale = now.placed.scale_factor();
-                return {now.stroke ? sc::stroke{with_opacity(*now.stroke, now.stroke_opacity * now.opacity), now.stroke_width * scale} : sc::stroke::none(),
-                        fills && now.fill ? sc::fill{with_opacity(*now.fill, now.fill_opacity * now.opacity), now.rule} : sc::fill::none()};
+                return {now.stroke ? sc::graphics::stroke{with_opacity(*now.stroke, now.stroke_opacity * now.opacity), now.stroke_width * scale} : sc::graphics::stroke::none(),
+                        fills && now.fill ? sc::graphics::fill{with_opacity(*now.fill, now.fill_opacity * now.opacity), now.rule} : sc::graphics::fill::none()};
             }
 
             // A gradient's attribute, from it or the gradients it refers to with href, nearest first.
@@ -693,7 +693,7 @@ namespace sc {
                         const double width = label{sample}.bounds().width();
                         sample.position.x(sample.position.x() - (now.anchor == "middle" ? width / 2 : width));
                     }
-                    into_.add(std::move(sample), sc::fill{with_opacity(*now.fill, now.fill_opacity * now.opacity)}, now.clip);
+                    into_.add(std::move(sample), sc::graphics::fill{with_opacity(*now.fill, now.fill_opacity * now.opacity)}, now.clip);
                     return;
                 }
                 if (name == "image") {
@@ -703,7 +703,7 @@ namespace sc {
                 if (const auto found = geometry_of(node)) {
                     auto appearance = look(now, name != "line");
                     if (now.fill_gradient && appearance.fill().visible()) {
-                        if (const auto gradient = gradient_for(*now.fill_gradient, *found, now)) appearance.fill(sc::fill{*gradient, now.rule});
+                        if (const auto gradient = gradient_for(*now.fill_gradient, *found, now)) appearance.fill(sc::graphics::fill{*gradient, now.rule});
                     }
                     if (appearance.visible()) into_.add(now.placed.apply(*found), appearance, now.clip);
                 }
@@ -813,10 +813,10 @@ namespace sc {
         try {
             document = web::document::parse(svg);
         } catch (const web::error &mistake) {
-            throw std::runtime_error(std::string{"sc::drawing: not SVG ("} + mistake.what() + ")");
+            throw std::runtime_error(std::string{"sc::graphics::drawing: not SVG ("} + mistake.what() + ")");
         }
         const auto root = document->root();
-        if (!root.is("svg")) throw std::runtime_error("sc::drawing: not SVG (the root isn't <svg>)");
+        if (!root.is("svg")) throw std::runtime_error("sc::graphics::drawing: not SVG (the root isn't <svg>)");
         drawing result;
         reader{result}.read(root);
         return result;
@@ -824,7 +824,7 @@ namespace sc {
 
     drawing drawing::load_svg(const std::filesystem::path &file) {
         std::ifstream in{file, std::ios::binary};
-        if (!in) throw std::runtime_error("sc::drawing: can't read " + file.string());
+        if (!in) throw std::runtime_error("sc::graphics::drawing: can't read " + file.string());
         const std::string text{std::istreambuf_iterator<char>{in}, {}};
         return from_svg(text);
     }
@@ -893,8 +893,8 @@ namespace sc {
 
     void drawing::save_svg(const std::filesystem::path &file) const {
         std::ofstream out{file, std::ios::binary};
-        if (!out) throw std::runtime_error("sc::drawing: can't write " + file.string());
+        if (!out) throw std::runtime_error("sc::graphics::drawing: can't write " + file.string());
         out << to_svg();
-        if (!out) throw std::runtime_error("sc::drawing: writing " + file.string() + " failed");
+        if (!out) throw std::runtime_error("sc::graphics::drawing: writing " + file.string() + " failed");
     }
 }

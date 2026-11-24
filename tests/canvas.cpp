@@ -1,4 +1,4 @@
-// sc::canvas turns every draw() into a few primitives; a canvas that records them shows which, with
+// sc::graphics::canvas turns every draw() into a few primitives; a canvas that records them shows which, with
 // what, and what it leaves out.
 #include <sc/graphics/canvas.h>
 
@@ -11,35 +11,35 @@
 #include <vector>
 
 namespace {
-    struct recording_canvas : sc::canvas {
+    struct recording_canvas : sc::graphics::canvas {
         std::vector<std::string> calls;
         sc::polygon last_polygon;
-        sc::stroke last_stroke{sc::color::Green, -1};
-        sc::fill last_fill;
+        sc::graphics::stroke last_stroke{sc::color::Green, -1};
+        sc::graphics::fill last_fill;
 
     protected:
-        void paint_polygon(const sc::polygon &shape, const sc::appearance &look) override {
+        void paint_polygon(const sc::polygon &shape, const sc::graphics::appearance &look) override {
             calls.push_back("polygon " + std::to_string(shape.size()));
             last_polygon = shape;
             last_stroke = look.stroke();
             last_fill = look.fill();
         }
 
-        void paint_circle(const sc::circle &shape, const sc::appearance &look) override {
+        void paint_circle(const sc::circle &shape, const sc::graphics::appearance &look) override {
             calls.push_back("circle " + std::to_string(static_cast<int>(shape.radius())));
             last_stroke = look.stroke();
             last_fill = look.fill();
         }
 
-        void paint_line(const sc::line &, const sc::stroke &stroke) override {
+        void paint_line(const sc::line &, const sc::graphics::stroke &stroke) override {
             calls.push_back("line " + std::to_string(static_cast<int>(stroke.width())));
         }
 
-        void paint_text(const sc::text &sample, const sc::fill &) override {
+        void paint_text(const sc::graphics::text &sample, const sc::graphics::fill &) override {
             calls.push_back("text " + sample.content + " " + sample.font.family);
         }
 
-        void paint_bitmap(const sc::bitmap &picture, const sc::transform &placement) override {
+        void paint_bitmap(const sc::graphics::bitmap &picture, const sc::transform &placement) override {
             const auto box = placement.apply(sc::rect{0, 0, 1, 1}).bounds();
             calls.push_back("bitmap " + std::to_string(static_cast<int>(picture.size().width())) + " at " + std::to_string(static_cast<int>(box.left())) +
                             "," + std::to_string(static_cast<int>(box.top())) + " " + std::to_string(static_cast<int>(box.width())) + "x" +
@@ -47,11 +47,11 @@ namespace {
         }
 
         // Half an em per character, x-height half the size, capitals 0.7 of it.
-        double measure_width(const sc::text &sample) override { return sample.content.size() * sample.font.size / 2; }
+        double measure_width(const sc::graphics::text &sample) override { return sample.content.size() * sample.font.size / 2; }
 
-        double measure_x_height(const sc::font &font) override { return font.size / 2; }
+        double measure_x_height(const sc::graphics::font &font) override { return font.size / 2; }
 
-        double measure_cap_height(const sc::font &font) override { return font.size * 0.7; }
+        double measure_cap_height(const sc::graphics::font &font) override { return font.size * 0.7; }
 
         void push_clip(const sc::path &shape) override { calls.push_back("clip " + std::to_string(shape.steps().size())); }
 
@@ -83,17 +83,17 @@ int main() {
         canvas.draw(sc::rect{10, 20, 30, 40});
         CHECK_EQ(canvas.calls.back(), std::string{"polygon 4"});
         CHECK_EQ(canvas.last_polygon[2], (sc::point{40, 60}));
-        CHECK(canvas.last_stroke == sc::stroke{}); // the defaults: black outline 1 wide, no fill
+        CHECK(canvas.last_stroke == sc::graphics::stroke{}); // the defaults: black outline 1 wide, no fill
         CHECK(canvas.last_stroke.colour() == sc::color::Black);
         CHECK_EQ(canvas.last_stroke.width(), 1.0);
         CHECK(!canvas.last_fill.visible());
 
-        canvas.draw(sc::rect_i{1, 2, 3, 4}, {sc::stroke{sc::color::Red, 2}, sc::color::Blue});
+        canvas.draw(sc::rect_i{1, 2, 3, 4}, {sc::graphics::stroke{sc::color::Red, 2}, sc::color::Blue});
         CHECK_EQ(canvas.last_polygon[0], (sc::point{1, 2}));
         CHECK(canvas.last_fill.colour() == sc::color::Blue);
         CHECK_EQ(canvas.last_stroke.width(), 2.0);
         canvas.draw(sc::rect{1, 2, 3, 4}, sc::color::Red); // a colour is a stroke 1 wide
-        CHECK(canvas.last_stroke == (sc::stroke{sc::color::Red, 1}));
+        CHECK(canvas.last_stroke == (sc::graphics::stroke{sc::color::Red, 1}));
 
         canvas.draw(sc::rotated_rect{{0, 0}, {2, 2}, 45});
         CHECK_NEAR(canvas.last_polygon[0].y(), -std::sqrt(2.0), 1e-12); // exact corners
@@ -109,13 +109,13 @@ int main() {
         canvas.draw(sc::circle_i{{5, 5}, 4});
         CHECK_EQ(canvas.calls.back(), std::string{"circle 4"});
 
-        canvas.draw(sc::text{"Hello", {10, 20}, {"serif", 14}});
+        canvas.draw(sc::graphics::text{"Hello", {10, 20}, {"serif", 14}});
         CHECK_EQ(canvas.calls.back(), std::string{"text Hello serif"});
-        canvas.draw(sc::line{{0, 0}, {10, 10}}, sc::stroke{sc::color::Black, 3});
+        canvas.draw(sc::line{{0, 0}, {10, 10}}, sc::graphics::stroke{sc::color::Black, 3});
         CHECK_EQ(canvas.calls.back(), std::string{"line 3"});
         canvas.draw(sc::line_i{{0, 0}, {10, 10}});
         CHECK_EQ(canvas.calls.back(), std::string{"line 1"});
-        for (const auto &segment: std::vector<sc::line>{{{0, 0}, {1, 1}}, {{1, 1}, {2, 0}}}) canvas.draw(segment, sc::stroke{sc::color::Red, 2});
+        for (const auto &segment: std::vector<sc::line>{{{0, 0}, {1, 1}}, {{1, 1}, {2, 0}}}) canvas.draw(segment, sc::graphics::stroke{sc::color::Red, 2});
         CHECK_EQ(canvas.calls.back(), std::string{"line 2"});
     }
 
@@ -140,26 +140,26 @@ int main() {
     {
         recording_canvas canvas;
         canvas.draw(sc::rect{0, 0, 10, 10}, sc::color::Transparent);                 // no stroke, no fill
-        canvas.draw(sc::rect{0, 0, 10, 10}, sc::stroke::none());
-        canvas.draw(sc::rect{0, 0, 10, 10}, sc::stroke{sc::color::Black, 0});        // no width
+        canvas.draw(sc::rect{0, 0, 10, 10}, sc::graphics::stroke::none());
+        canvas.draw(sc::rect{0, 0, 10, 10}, sc::graphics::stroke{sc::color::Black, 0});        // no width
         canvas.draw(sc::polygon{{1, 1}});
         canvas.draw(sc::circle{{1, 1}, 0});
-        canvas.draw(sc::text{"", {0, 0}});
-        canvas.draw(sc::text{"x", {0, 0}}, sc::color::Transparent);
-        canvas.draw(sc::line{{0, 0}, {1, 1}}, sc::stroke{sc::color::Black, 0});
+        canvas.draw(sc::graphics::text{"", {0, 0}});
+        canvas.draw(sc::graphics::text{"x", {0, 0}}, sc::color::Transparent);
+        canvas.draw(sc::line{{0, 0}, {1, 1}}, sc::graphics::stroke{sc::color::Black, 0});
         CHECK(canvas.calls.empty());
 
-        canvas.draw(sc::rect{0, 0, 10, 10}, {sc::stroke{sc::color::Black, 0}, sc::color::Red}); // fill only
-        CHECK(canvas.last_stroke == sc::stroke::none()); // passed on as none
+        canvas.draw(sc::rect{0, 0, 10, 10}, {sc::graphics::stroke{sc::color::Black, 0}, sc::color::Red}); // fill only
+        CHECK(canvas.last_stroke == sc::graphics::stroke::none()); // passed on as none
         CHECK(canvas.last_fill.colour() == sc::color::Red);
     }
 
     SECTION("Measuring text");
     {
         recording_canvas canvas;
-        CHECK_EQ(canvas.text_width(sc::text{"abcd", {5, 5}, {"serif", 10}}), 20.0);
-        CHECK_EQ(canvas.text_width(sc::text{}), 0.0);                           // nothing to measure
-        CHECK_EQ(canvas.text_width(sc::text{"abcd", {}, {"serif", 0}}), 0.0);
+        CHECK_EQ(canvas.text_width(sc::graphics::text{"abcd", {5, 5}, {"serif", 10}}), 20.0);
+        CHECK_EQ(canvas.text_width(sc::graphics::text{}), 0.0);                           // nothing to measure
+        CHECK_EQ(canvas.text_width(sc::graphics::text{"abcd", {}, {"serif", 0}}), 0.0);
         CHECK_EQ(canvas.text_x_height(), 6.0);                                  // the default font, 12
         CHECK_NEAR(canvas.text_cap_height({"serif", 20}), 14.0, 1e-12);
     }
@@ -175,16 +175,16 @@ int main() {
         sc::path open;
         open.move_to({0, 0}).cubic_to({0, 10}, {10, 10}, {10, 0});
         canvas.calls.clear();
-        canvas.draw(open, sc::stroke{sc::color::Black, 2});
+        canvas.draw(open, sc::graphics::stroke{sc::color::Black, 2});
         CHECK_LT(size_t{3}, canvas.calls.size()); // an open curve: short lines
         CHECK_EQ(canvas.calls.back(), std::string{"line 2"});
         canvas.calls.clear();
-        canvas.draw(open, {sc::stroke{sc::color::Black, 2}, sc::color::Red}); // with a fill: filled as if closed, stroked open
+        canvas.draw(open, {sc::graphics::stroke{sc::color::Black, 2}, sc::color::Red}); // with a fill: filled as if closed, stroked open
         CHECK(!canvas.calls.empty() && canvas.calls.front().starts_with("polygon"));
         CHECK(canvas.last_fill.colour() == sc::color::Red);
         CHECK_EQ(canvas.calls.back(), std::string{"line 2"});
 
-        const auto badge = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">)svg"
+        const auto badge = sc::graphics::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">)svg"
                                                  R"svg(<rect width="200" height="100" fill="#ff0000"/></svg>)svg");
         canvas.calls.clear();
         canvas.draw(badge, sc::rect{0, 0, 100, 100}); // half size, centred vertically
@@ -196,7 +196,7 @@ int main() {
         CHECK_NEAR(bounds.height(), 50.0, 1e-9);
         CHECK(canvas.last_fill.colour() == sc::color::Red);
 
-        const auto clipped = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">)svg"
+        const auto clipped = sc::graphics::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">)svg"
                                                    R"svg(<defs><clipPath id="c"><rect width="5" height="5"/></clipPath></defs>)svg"
                                                    R"svg(<rect clip-path="url(#c)" width="10" height="10" fill="#000000"/></svg>)svg");
         canvas.calls.clear();
@@ -215,7 +215,7 @@ int main() {
 
         const std::vector<sc::shape> marks{sc::rect{0, 0, 5, 5}, sc::circle{{9, 9}, 2}, sc::line{{0, 0}, {3, 3}}};
         canvas.calls.clear();
-        for (const auto &mark: marks) canvas.draw(mark, {sc::stroke{sc::color::Blue, 2}, sc::color::Green});
+        for (const auto &mark: marks) canvas.draw(mark, {sc::graphics::stroke{sc::color::Blue, 2}, sc::color::Green});
         CHECK_EQ(canvas.calls, (std::vector<std::string>{"polygon 4", "circle 2", "line 2"})); // each as itself
     }
 
@@ -224,7 +224,7 @@ int main() {
         recording_canvas canvas;
         sc::group marks{sc::rect{0, 0, 5, 5}, sc::circle{{9, 9}, 2}, sc::line{{0, 0}, {3, 3}}};
         marks.push_back(sc::group{sc::circle{{20, 20}, 3}});
-        canvas.draw(marks, {sc::stroke{sc::color::Blue, 2}, sc::color::Green});
+        canvas.draw(marks, {sc::graphics::stroke{sc::color::Blue, 2}, sc::color::Green});
         CHECK_EQ(canvas.calls, (std::vector<std::string>{"polygon 4", "circle 2", "line 2", "circle 3"}));
         canvas.calls.clear();
         canvas.draw(sc::shape{marks}); // through sc::shape: the same
@@ -238,7 +238,7 @@ int main() {
     SECTION("A bitmap: stretched to its box; an empty box draws nothing");
     {
         recording_canvas canvas;
-        const sc::bitmap dots{sc::base64::decode("iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAAEUlEQVR4nGP4z8DAgMAgyAAAO9gF+4ea2nQAAAAASUVORK5CYII=")};
+        const sc::graphics::bitmap dots{sc::base64::decode("iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAAEUlEQVR4nGP4z8DAgMAgyAAAO9gF+4ea2nQAAAAASUVORK5CYII=")};
         canvas.draw(dots, sc::rect{10, 20, 30, 40});
         canvas.draw(dots, sc::rect{10, 20, 0, 40});
         CHECK_EQ(canvas.calls, (std::vector<std::string>{"bitmap 3 at 10,20 30x40"}));
@@ -246,12 +246,12 @@ int main() {
 
     SECTION("Fonts");
     {
-        const sc::font plain;
+        const sc::graphics::font plain;
         CHECK_EQ(plain.family, std::string{"sans-serif"});
         CHECK_EQ(plain.size, 12.0);
         CHECK_EQ(plain.weight, 400);
-        CHECK_EQ(sc::font::bold("serif", 20).weight, 700);
-        const sc::font small{"serif"}, large{"serif", 14};
+        CHECK_EQ(sc::graphics::font::bold("serif", 20).weight, 700);
+        const sc::graphics::font small{"serif"}, large{"serif", 14};
         CHECK(small < large);
     }
     TEST_SUMMARY();

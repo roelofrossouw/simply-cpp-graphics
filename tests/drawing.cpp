@@ -1,4 +1,4 @@
-// sc::drawing: reading and writing SVG, bounds, transforms and flips, recording, and what throws.
+// sc::graphics::drawing: reading and writing SVG, bounds, transforms and flips, recording, and what throws.
 #include <sc/graphics/drawing.h>
 
 #include <sc/core/base64.h>
@@ -13,10 +13,10 @@
 #include <variant>
 
 namespace {
-    const sc::drawable &shape_at(const sc::drawing &picture, const std::size_t i) { return std::get<sc::drawable>(picture.items().at(i)); }
+    const sc::graphics::drawable &shape_at(const sc::graphics::drawing &picture, const std::size_t i) { return std::get<sc::graphics::drawable>(picture.items().at(i)); }
 
     template<typename T>
-    bool holds(const sc::drawable &item) { return std::holds_alternative<T>(item.shape.value()); }
+    bool holds(const sc::graphics::drawable &item) { return std::holds_alternative<T>(item.shape.value()); }
 
     bool near(const sc::rect &r, const double left, const double top, const double width, const double height, const double tolerance = 1e-9) {
         return std::abs(r.left() - left) < tolerance && std::abs(r.top() - top) < tolerance && std::abs(r.width() - width) < tolerance &&
@@ -27,7 +27,7 @@ namespace {
 int main() {
     SECTION("Shapes keep their kind, with their paint");
     {
-        const auto picture = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200">)svg"
+        const auto picture = sc::graphics::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200">)svg"
                                                    R"svg(<rect width="320" height="200" rx="16" fill="#2a6f97"/>)svg"
                                                    R"svg(<circle cx="160" cy="100" r="70" fill="#f4d35e"/>)svg"
                                                    R"svg(<path d="M120 130 Q160 170 200 130" stroke="#2a6f97" stroke-width="8" fill="none"/></svg>)svg");
@@ -50,7 +50,7 @@ int main() {
 
     SECTION("The other shapes, style=\"...\", opacity and fill-rule");
     {
-        const auto picture = sc::drawing::from_svg(
+        const auto picture = sc::graphics::drawing::from_svg(
             R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">)svg"
             R"svg(<line x1="0" y1="0" x2="10" y2="10" stroke="red"/>)svg"
             R"svg(<polyline points="0,0 10,0 10,10" fill="none" stroke="blue"/>)svg"
@@ -69,14 +69,14 @@ int main() {
         CHECK_EQ(shape_at(picture, 2).appearance.stroke().width(), 2.0);
         CHECK(near(shape_at(picture, 3).bounds(), 30, 40, 40, 20, 1e-6)); // the ellipse
         CHECK_NEAR(shape_at(picture, 3).appearance.fill().colour().alpha(), 0.5, 1e-12);
-        CHECK(shape_at(picture, 4).appearance.fill().rule() == sc::fill_rule::even_odd);
+        CHECK(shape_at(picture, 4).appearance.fill().rule() == sc::graphics::fill_rule::even_odd);
         CHECK_NEAR(shape_at(picture, 4).appearance.fill().colour().alpha(), 0.5, 1e-12);
         CHECK(near(shape_at(picture, 5).bounds(), 10, 10, 80, 40, 1e-6)); // a half circle arc: its top at 50 - 40
     }
 
     SECTION("viewBox, transforms, <use> and nested groups");
     {
-        const auto picture = sc::drawing::from_svg(
+        const auto picture = sc::graphics::drawing::from_svg(
             R"svg(<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="100 100 50 20">)svg"
             R"svg(<defs><rect id="dot" width="2" height="2"/></defs>)svg"
             R"svg(<g transform="translate(10,5)"><rect x="100" y="100" width="10" height="10" fill="#000000"/></g>)svg"
@@ -98,24 +98,24 @@ int main() {
 
     SECTION("A viewBox fitted into the width and height, in their units");
     {
-        const auto scaled = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200px" height="100" viewBox="0 0 20 10">)svg"
+        const auto scaled = sc::graphics::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200px" height="100" viewBox="0 0 20 10">)svg"
                                                   R"svg(<rect x="1" y="1" width="2" height="2"/></svg>)svg");
         CHECK(scaled.page() == (sc::size{200, 100}));
         CHECK(near(shape_at(scaled, 0).bounds(), 10, 10, 20, 20)); // ten times the viewBox
-        const auto wider = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100" viewBox="0 0 20 10">)svg"
+        const auto wider = sc::graphics::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100" viewBox="0 0 20 10">)svg"
                                                  R"svg(<rect width="20" height="10"/></svg>)svg");
         CHECK(near(shape_at(wider, 0).bounds(), 50, 0, 200, 100)); // evenly, centred
-        const auto inches = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="1in" viewBox="0 0 10 5"/>)svg");
+        const auto inches = sc::graphics::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="1in" viewBox="0 0 10 5"/>)svg");
         CHECK(inches.page() == (sc::size{96, 48})); // the height in proportion
     }
 
     SECTION("Percentages are of the viewport: the viewBox, else the width and height");
     {
         // A QR code's light square, as sc-qrencode wrote it until 1.3.1: the whole viewBox, not 100 units.
-        const auto square = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29">)svg"
+        const auto square = sc::graphics::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29">)svg"
                                                   R"svg(<rect width="100%" height="100%" fill="#fff"/></svg>)svg");
         CHECK(near(shape_at(square, 0).bounds(), 0, 0, 29, 29));
-        const auto sized = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">)svg"
+        const auto sized = sc::graphics::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">)svg"
                                                  R"svg(<rect x="10%" y="50%" width="25%" height="20%"/><line x1="0" y1="0" x2="50%" y2="100%" stroke="#000"/>)svg"
                                                  R"svg(<circle cx="50%" cy="50%" r="10%"/></svg>)svg");
         CHECK(near(shape_at(sized, 0).bounds(), 20, 50, 50, 20));
@@ -123,14 +123,14 @@ int main() {
         const double r = 0.1 * std::sqrt((200.0 * 200 + 100 * 100) / 2); // of the diagonal over √2
         CHECK(near(shape_at(sized, 2).bounds(), 100 - r, 50 - r, 2 * r, 2 * r, 1e-6));
         // An inner <svg> is a viewport of its own: its viewBox, or its width and height.
-        const auto inner = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">)svg"
+        const auto inner = sc::graphics::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">)svg"
                                                  R"svg(<svg x="20" width="50%" height="50%"><rect width="100%" height="100%"/></svg></svg>)svg");
         CHECK(near(shape_at(inner, 0).bounds(), 20, 0, 100, 50));
     }
 
     SECTION("Clip paths");
     {
-        const auto disc = sc::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">)svg"
+        const auto disc = sc::graphics::drawing::from_svg(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">)svg"
                                                 R"svg(<defs><clipPath id="round"><circle cx="50" cy="50" r="45"/></clipPath></defs>)svg"
                                                 R"svg(<rect clip-path="url(#round)" width="100" height="50" fill="#e9c46a"/></svg>)svg");
         const auto &clip = shape_at(disc, 0).clip;
@@ -141,7 +141,7 @@ int main() {
 
     SECTION("A mask is read as a clip of its shapes, through <use> and groups");
     {
-        const auto badge = sc::drawing::from_svg(
+        const auto badge = sc::graphics::drawing::from_svg(
             R"svg(<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100" height="40">)svg"
             R"svg(<defs><rect id="shape" x="10" y="10" width="20" height="20"/></defs>)svg"
             R"svg(<mask id="m" fill="white"><g transform="translate(5,0)"><use xlink:href="#shape"/></g></mask>)svg"
@@ -153,7 +153,7 @@ int main() {
 
     SECTION("Linear gradients: in the box or in user space, through gradientTransform, stops by href");
     {
-        const auto picture = sc::drawing::from_svg(
+        const auto picture = sc::graphics::drawing::from_svg(
             R"svg(<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="100">)svg"
             R"svg(<defs><linearGradient id="g"><stop offset="0" stop-color="red"/><stop offset="100%" stop-color="blue"/></linearGradient>)svg"
             R"svg(<linearGradient id="vertical" xlink:href="#g" x2="0" y2="1"/>)svg"
@@ -185,7 +185,7 @@ int main() {
         }
 
         // Written back and read again: the same gradients, in user space.
-        const auto back = sc::drawing::from_svg(picture.to_svg());
+        const auto back = sc::graphics::drawing::from_svg(picture.to_svg());
         for (std::size_t i = 0; i < 3; ++i) {
             const auto &a = shape_at(picture, i).appearance.fill().gradient(), &b = shape_at(back, i).appearance.fill().gradient();
             CHECK(b.has_value());
@@ -202,13 +202,13 @@ int main() {
 
     SECTION("Text: a label with its font and fill");
     {
-        const auto picture = sc::drawing::from_svg(
+        const auto picture = sc::graphics::drawing::from_svg(
             R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">)svg"
             R"svg(<text x="10" y="40" font-family="'DejaVu Sans', sans-serif" font-size="20" font-weight="bold" fill="navy">)svg"
             R"svg(Hello <tspan font-style="italic">there</tspan></text>)svg"
             R"svg(<g transform="scale(2)"><text x="5" y="30" style="font-size: 10px">Twice</text></g></svg>)svg");
         CHECK_EQ(picture.size(), std::size_t{2});
-        const auto &hello = std::get<sc::label>(picture.items().at(0));
+        const auto &hello = std::get<sc::graphics::label>(picture.items().at(0));
         CHECK_EQ(hello.text.content, std::string{"Hello there"});
         CHECK_EQ(hello.text.font.family, std::string{"DejaVu Sans"});
         CHECK_EQ(hello.text.font.size, 20.0);
@@ -217,29 +217,29 @@ int main() {
         CHECK(hello.text.position == (sc::point{10, 40}));
         CHECK_LT(0.0, hello.bounds().width());
         CHECK_LT(hello.bounds().top(), 40.0); // the glyphs rise above the baseline
-        const auto &twice = std::get<sc::label>(picture.items().at(1));
+        const auto &twice = std::get<sc::graphics::label>(picture.items().at(1));
         CHECK_EQ(twice.text.font.size, 20.0); // scaled with its group
         CHECK(twice.text.position == (sc::point{10, 60}));
     }
 
     SECTION("Writing SVG and reading it back");
     {
-        sc::drawing picture{{200, 100}};
-        picture.add(sc::rect{10, 10, 50, 20}, {sc::stroke{sc::color::Black, 2}, sc::color{"gold"}});
-        picture.add(sc::rounded_rect{sc::rect{70, 10, 50, 20}, 5}, sc::appearance::filled(sc::color{0, 0, 1, 0.5}));
+        sc::graphics::drawing picture{{200, 100}};
+        picture.add(sc::rect{10, 10, 50, 20}, {sc::graphics::stroke{sc::color::Black, 2}, sc::color{"gold"}});
+        picture.add(sc::rounded_rect{sc::rect{70, 10, 50, 20}, 5}, sc::graphics::appearance::filled(sc::color{0, 0, 1, 0.5}));
         picture.add(sc::rotated_rect{{150, 25}, {40, 10}, 20});
-        picture.add(sc::circle{{30, 70}, 15}, sc::appearance::filled(sc::fill{sc::color::Red, sc::fill_rule::even_odd}));
+        picture.add(sc::circle{{30, 70}, 15}, sc::graphics::appearance::filled(sc::graphics::fill{sc::color::Red, sc::graphics::fill_rule::even_odd}));
         picture.add(sc::line{{0, 99}, {200, 99}}, sc::color::Green);
         picture.add(sc::polygon{{100, 60}, {120, 90}, {80, 90}});
         sc::path wave;
         wave.move_to({130, 60}).cubic_to({140, 50}, {150, 70}, {160, 60});
         picture.add(wave, sc::color::Blue, sc::path{}.move_to({0, 0}).line_to({200, 0}).line_to({200, 100}).close());
-        picture.add(sc::text{"A & B <c>", {10, 50}, {"serif", 12, 400, true}}, sc::color::Black);
+        picture.add(sc::graphics::text{"A & B <c>", {10, 50}, {"serif", 12, 400, true}}, sc::color::Black);
         const auto svg = picture.to_svg();
         CHECK(svg.find("A &amp; B &lt;c&gt;") != std::string::npos);
         CHECK(svg.find("<clipPath id=\"clip1\">") != std::string::npos);
 
-        const auto back = sc::drawing::from_svg(svg);
+        const auto back = sc::graphics::drawing::from_svg(svg);
         CHECK(back.page() == picture.page());
         CHECK_EQ(back.size(), picture.size());
         for (std::size_t i = 0; i < 7; ++i) {
@@ -250,19 +250,19 @@ int main() {
             CHECK(read.appearance.stroke() == mine.appearance.stroke());
         }
         CHECK(shape_at(back, 6).clip.has_value());
-        CHECK(std::get<sc::label>(back.items().at(7)) == std::get<sc::label>(picture.items().at(7)));
+        CHECK(std::get<sc::graphics::label>(back.items().at(7)) == std::get<sc::graphics::label>(picture.items().at(7)));
 
         const auto file = std::filesystem::temp_directory_path() / "sc-graphics-drawing.svg";
         picture.save_svg(file);
-        CHECK_EQ(sc::drawing::load_svg(file).size(), picture.size());
+        CHECK_EQ(sc::graphics::drawing::load_svg(file).size(), picture.size());
         std::filesystem::remove(file);
     }
 
     SECTION("Bounds, transforms and flipping across the page");
     {
-        sc::drawing page{{595, 842}};
+        sc::graphics::drawing page{{595, 842}};
         CHECK(near(page.bounds(), 0, 0, 0, 0));
-        page.add(sc::rect{50, 50, 100, 40}, sc::stroke{sc::color::Black, 2});
+        page.add(sc::rect{50, 50, 100, 40}, sc::graphics::stroke{sc::color::Black, 2});
         page.add(sc::circle{{300, 80}, 20});
         CHECK(near(page.bounds(), 50, 50, 270, 50));
         page.flip_horizontal(); // across the page: the rect to the right margin
@@ -273,69 +273,69 @@ int main() {
         CHECK_EQ(shape_at(page, 0).appearance.stroke().width(), 1.0); // outlines scale with it
         CHECK(page.page() == (sc::size{595, 842}));                     // the page stays
 
-        sc::drawing words{{200, 100}};
-        words.add(sc::text{"left", {10, 50}, {"sans-serif", 10}});
-        const auto before = std::get<sc::label>(words.items()[0]).bounds();
+        sc::graphics::drawing words{{200, 100}};
+        words.add(sc::graphics::text{"left", {10, 50}, {"sans-serif", 10}});
+        const auto before = std::get<sc::graphics::label>(words.items()[0]).bounds();
         words.flip_horizontal();
-        const auto after = std::get<sc::label>(words.items()[0]).bounds();
+        const auto after = std::get<sc::graphics::label>(words.items()[0]).bounds();
         CHECK_NEAR(after.right(), 200 - before.left(), 1e-6); // its box mirrored; the text itself reads the same way
         CHECK_NEAR(after.width(), before.width(), 1e-6);
         words.apply(sc::transform::scale(2));
-        CHECK_EQ(std::get<sc::label>(words.items()[0]).text.font.size, 20.0);
+        CHECK_EQ(std::get<sc::graphics::label>(words.items()[0]).text.font.size, 20.0);
     }
 
     SECTION("Drawing on a drawing records it");
     {
-        sc::drawing record{{100, 100}};
+        sc::graphics::drawing record{{100, 100}};
         record.draw(sc::rect{10, 10, 20, 20}, sc::color::Red); // recorded as the canvas paints it: a polygon
         record.draw(sc::circle{{50, 50}, 5});
-        record.draw(sc::text{"hi", {10, 90}});
+        record.draw(sc::graphics::text{"hi", {10, 90}});
         CHECK_EQ(record.size(), std::size_t{3});
         CHECK(holds<sc::polygon>(shape_at(record, 0)));
         CHECK(holds<sc::circle>(shape_at(record, 1)));
-        CHECK(std::holds_alternative<sc::label>(record.items()[2]));
-        CHECK_LT(0.0, record.text_width(sc::text{"hi"}));
+        CHECK(std::holds_alternative<sc::graphics::label>(record.items()[2]));
+        CHECK_LT(0.0, record.text_width(sc::graphics::text{"hi"}));
 
-        sc::drawing copy;
+        sc::graphics::drawing copy;
         copy.draw(record); // replayed at its own coordinates
         CHECK_EQ(copy.size(), record.size());
-        sc::drawing fitted;
+        sc::graphics::drawing fitted;
         fitted.draw(record, sc::rect{0, 0, 50, 50}); // half the size
         CHECK(near(shape_at(fitted, 0).bounds(), 5, 5, 10, 10, 1e-9));
     }
 
     SECTION("Figures: raster images placed, moved and written as SVG");
     {
-        const sc::bitmap dots{sc::base64::decode("iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAAEUlEQVR4nGP4z8DAgMAgyAAAO9gF+4ea2nQAAAAASUVORK5CYII=")};
-        sc::drawing picture{{100, 100}};
+        const sc::graphics::bitmap dots{sc::base64::decode("iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAAEUlEQVR4nGP4z8DAgMAgyAAAO9gF+4ea2nQAAAAASUVORK5CYII=")};
+        sc::graphics::drawing picture{{100, 100}};
         picture.draw(dots, sc::rect{10, 20, 30, 40}); // recorded as a figure
         CHECK_EQ(picture.size(), std::size_t{1});
-        CHECK(std::holds_alternative<sc::figure>(picture.items()[0]));
+        CHECK(std::holds_alternative<sc::graphics::figure>(picture.items()[0]));
         CHECK(near(picture.bounds(), 10, 20, 30, 40, 1e-9));
         picture.flip_horizontal(); // its corners mirrored across the page
         CHECK(near(picture.bounds(), 60, 20, 30, 40, 1e-9));
-        const auto back = sc::drawing::from_svg(picture.to_svg());
+        const auto back = sc::graphics::drawing::from_svg(picture.to_svg());
         CHECK(back == picture);
 
         // An <image>'s data: URI, fitted into its box (xMidYMid meet) or stretched ("none").
-        const auto read = sc::drawing::from_svg(R"(<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">)"
+        const auto read = sc::graphics::drawing::from_svg(R"(<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">)"
                                                 R"(<image x="0" y="0" width="60" height="60" href=")" + dots.data_uri() + R"("/>)"
                                                 R"(<image x="0" y="0" width="60" height="60" preserveAspectRatio="none" href=")" + dots.data_uri() + R"("/>)"
                                                 R"(<image href="not-there.png"/></svg>)");
         CHECK_EQ(read.size(), std::size_t{2});
-        CHECK(near(std::get<sc::figure>(read.items()[0]).bounds(), 0, 10, 60, 40, 1e-9));
-        CHECK(near(std::get<sc::figure>(read.items()[1]).bounds(), 0, 0, 60, 60, 1e-9));
+        CHECK(near(std::get<sc::graphics::figure>(read.items()[0]).bounds(), 0, 10, 60, 40, 1e-9));
+        CHECK(near(std::get<sc::graphics::figure>(read.items()[1]).bounds(), 0, 0, 60, 60, 1e-9));
     }
 
     SECTION("Files and mistakes");
     {
         const auto file = std::filesystem::temp_directory_path() / "sc-graphics-test.svg";
         std::ofstream{file} << R"(<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4"/></svg>)";
-        CHECK_EQ(sc::drawing::load_svg(file).size(), size_t{1});
+        CHECK_EQ(sc::graphics::drawing::load_svg(file).size(), size_t{1});
         std::filesystem::remove(file);
-        CHECK_THROWS_AS(sc::drawing::load_svg(file), std::runtime_error);
-        CHECK_THROWS_AS(sc::drawing::from_svg("not svg at all"), std::runtime_error);
-        CHECK_THROWS_AS(sc::drawing::from_svg("<html></html>"), std::runtime_error);
+        CHECK_THROWS_AS(sc::graphics::drawing::load_svg(file), std::runtime_error);
+        CHECK_THROWS_AS(sc::graphics::drawing::from_svg("not svg at all"), std::runtime_error);
+        CHECK_THROWS_AS(sc::graphics::drawing::from_svg("<html></html>"), std::runtime_error);
     }
 
     TEST_SUMMARY();

@@ -8,9 +8,10 @@ option(SC_GRAPHICS_BUILD_TESTS "Build simply-cpp-graphics tests" ${PROJECT_IS_TO
 get_sc_version()
 message(STATUS "SimplyCPP ${SC_MODULE} Version: ${SC_VERSION}")
 
-find_or_install_package(sc-core simply-cpp-dev simply-cpp 3.0.0)
+find_or_install_package(sc-core simply-cpp-dev simply-cpp 4.0.0)
+find_or_install_package(sc-geometry simply-cpp-geometry-dev simply-cpp-geometry 1.0.0)
 # SVG is read as XML by sc-web (libxml2).
-find_or_install_package(sc-web simply-cpp-web-dev simply-cpp-web 2.0.0)
+find_or_install_package(sc-web simply-cpp-web-dev simply-cpp-web 3.0.0)
 # sc::font_face: fontconfig finds the font, FreeType reads it. Through pkg-config too, linked by path.
 config_or_install_package(fontconfig libfontconfig-dev fontconfig)
 config_or_install_package(freetype2 libfreetype-dev freetype)
@@ -40,21 +41,21 @@ set(SOURCE_OBJECTS include/sc/graphics/font.h include/sc/graphics/text.h include
 set(SOURCE_LIBRARIES)
 set(SOURCE_LINK_LIBRARIES)
 
-add_sc_object(paint LINK_LIBRARIES sc::sc-core)
-add_sc_object(bitmap LINK_LIBRARIES sc::sc-core)
-add_sc_object(standard_font LINK_LIBRARIES sc::sc-core)
-add_sc_object(canvas INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src LINK_LIBRARIES sc::sc-core PUBLIC_LINK_LIBRARIES sc::sc-core)
-add_sc_object(paragraph LINK_LIBRARIES sc::sc-core)
+add_sc_object(paint LINK_LIBRARIES sc::sc-core sc::sc-geometry)
+add_sc_object(bitmap LINK_LIBRARIES sc::sc-core sc::sc-geometry)
+add_sc_object(standard_font LINK_LIBRARIES sc::sc-core sc::sc-geometry)
+add_sc_object(canvas INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src LINK_LIBRARIES sc::sc-core sc::sc-geometry PUBLIC_LINK_LIBRARIES sc::sc-core sc::sc-geometry)
+add_sc_object(paragraph LINK_LIBRARIES sc::sc-core sc::sc-geometry)
 # fontconfig, FreeType and HarfBuzz stay out of the installed headers.
 add_sc_object(font_face
         SOURCES src/glyphs.h
         INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src
-        LINK_LIBRARIES sc::sc-core PkgConfig::fontconfig PkgConfig::freetype2 PkgConfig::harfbuzz
+        LINK_LIBRARIES sc::sc-core sc::sc-geometry PkgConfig::fontconfig PkgConfig::freetype2 PkgConfig::harfbuzz
         PUBLIC_LINK_LIBRARIES ${SC_GRAPHICS_FONTCONFIG_LIBRARY} ${SC_GRAPHICS_FREETYPE_LIBRARY} ${SC_GRAPHICS_HARFBUZZ_LIBRARY})
 # Drawings, and reading and writing them as SVG (through sc-web, out of the installed headers).
 add_sc_object(drawing
         SOURCES src/drawing_svg.cpp
-        LINK_LIBRARIES sc::sc-core sc::sc-web
+        LINK_LIBRARIES sc::sc-core sc::sc-geometry sc::sc-web
         PUBLIC_LINK_LIBRARIES sc::sc-web)
 
 add_sc_libraries(DESCRIPTION "simply-cpp-graphics")
@@ -75,8 +76,8 @@ add_sc_example(sc-graphics-demo)
 # sc-ai, which draws) built against an earlier one would call the wrong function, so they're
 # upgraded with it.
 # An emoji font, so emoji have a face to fall back on (a colour one).
-package_sc_module(DEPENDS "simply-cpp-web (>= 2.0.0~)" fonts-noto-color-emoji
-        DEV_DEPENDS "simply-cpp-dev (>= 3.0.0~)" "simply-cpp-web-dev (>= 2.0.0~)" libfontconfig-dev libfreetype-dev libharfbuzz-dev
+package_sc_module(DEPENDS "simply-cpp-web (>= 3.0.0~)" fonts-noto-color-emoji
+        DEV_DEPENDS "simply-cpp-dev (>= 4.0.0~)" "simply-cpp-geometry-dev (>= 1.0.0~)" "simply-cpp-web-dev (>= 3.0.0~)" libfontconfig-dev libfreetype-dev libharfbuzz-dev
         BREAKS "simply-cpp-image (<< 5.1.0~)" "simply-cpp-pdf (<< 3.1.0~)" "simply-cpp-mupdf (<< 4.1.0~)" "simply-cpp-ai (<< 2.0.2~)"
         "simply-cpp-litehtml (<< 1.0.0~)"
         # page_size's values are A3, A4 and A5 since 6.0.0: headers naming a4 don't compile against it.

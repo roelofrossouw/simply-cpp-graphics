@@ -1,4 +1,4 @@
-// sc::typeface, sc::font_face and sc::font's face(): fontconfig finds the fonts, FreeType reads them.
+// sc::graphics::typeface, sc::graphics::font_face and sc::graphics::font's face(): fontconfig finds the fonts, FreeType reads them.
 #include <sc/graphics/font.h>
 #include <sc/graphics/font_face.h>
 #include "glyphs.h"
@@ -24,7 +24,7 @@
 #include <tuple>
 #include <utility>
 
-namespace sc {
+namespace sc::graphics {
     struct font_face::impl {
         std::string file;
         int index = 0;
@@ -240,9 +240,9 @@ namespace sc {
         double scaled(const opened &face, const double units, const double size) { return units * size / face.units_per_em; }
     }
 
-    sc::typeface font_face::typeface() const {
+    sc::graphics::typeface font_face::typeface() const {
         if (auto found = typeface::find(impl_->family)) return *found;
-        return sc::typeface{impl_->family}; // uninstalled since: the name it had
+        return sc::graphics::typeface{impl_->family}; // uninstalled since: the name it had
     }
 
     const std::string &font_face::family() const { return impl_->family; }

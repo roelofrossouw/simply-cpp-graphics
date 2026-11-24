@@ -3,7 +3,8 @@
 include("${CMAKE_CURRENT_LIST_DIR}/SimplyCppFunctions.cmake")
 
 # canvas.h uses sc-core's geometry and colours; the libraries link sc-web (SVG as XML).
-find_or_install_package(sc-core simply-cpp-dev simply-cpp 3.0.0)
-find_or_install_package(sc-web simply-cpp-web-dev simply-cpp-web 2.0.0)
+find_or_install_package(sc-core simply-cpp-dev simply-cpp 4.0.0)
+find_or_install_package(sc-geometry simply-cpp-geometry-dev simply-cpp-geometry 1.0.0)
+find_or_install_package(sc-web simply-cpp-web-dev simply-cpp-web 3.0.0)
 
 include("${CMAKE_CURRENT_LIST_DIR}/sc-graphicsTargets.cmake")

@@ -1,4 +1,4 @@
-// sc::standard_font: PDF's built-in fonts and Adobe's metrics for them (the Core 14 AFM files,
+// sc::graphics::standard_font: PDF's built-in fonts and Adobe's metrics for them (the Core 14 AFM files,
 // which may be used, copied and distributed for any purpose): the widths of the Windows-1252
 // characters 32 to 255, in thousandths of the size (here taken from the metric-compatible Liberation
 // fonts, whose advances are Adobe's), and the vertical metrics.
@@ -10,7 +10,7 @@
 #include <array>
 #include <utility>
 
-namespace sc {
+namespace sc::graphics {
     namespace {
         struct metrics {
             const char *name;

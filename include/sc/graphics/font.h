@@ -9,7 +9,7 @@
 #include <string_view>
 #include <utility>
 
-namespace sc {
+namespace sc::graphics {
     /// A font to draw text in, as asked for: a typeface (family), a style of it and a size. family is
     /// a name ("DejaVu Sans", "Roboto") or a generic one ("sans-serif", "serif", "monospace"); size is
     /// the em size, in the canvas's units (points on a PDF, pixels on an image); weight is a CSS
@@ -37,7 +37,7 @@ namespace sc {
         /// ("sans-serif") is available when any font is.
         [[nodiscard]] bool available() const;
 
-        /// Its face's measurements at this size (see sc::font_face); 0 without a face.
+        /// Its face's measurements at this size (see sc::graphics::font_face); 0 without a face.
         [[nodiscard]] double width(std::string_view text) const;
 
         [[nodiscard]] double ascender() const;

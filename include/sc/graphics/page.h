@@ -1,7 +1,7 @@
 #pragma once
 
-#include <sc/core/distance.h>
-#include <sc/core/size.h>
+#include <sc/geometry/distance.h>
+#include <sc/geometry/size.h>
 
 #include <sc/core/core.h>
 
@@ -9,7 +9,7 @@
 #include <string>
 #include <string_view>
 
-namespace sc {
+namespace sc::graphics {
     /// Paper sizes for the PDF engines (sc-pdflite, sc-mupdf, sc-pdflite): ISO's in whole millimetres as
     /// ISO 216 has them (A3 297 x 420, A4 210 x 297, A5 148 x 210 mm), Letter and Legal in inches
     /// (8.5 x 11 and 8.5 x 14). In points (1/72 inch) the ISO sizes have fractions: A4 is
@@ -20,7 +20,7 @@ namespace sc {
 
     /// A page's width and height in points; landscape swaps them.
     ///
-    ///     sc::pdflite::writer pdf{"wide.pdf", sc::page_size::A3, sc::orientation::landscape};   // 420 x 297 mm
+    ///     sc::pdflite::writer pdf{"wide.pdf", sc::graphics::page_size::A3, sc::graphics::orientation::landscape};   // 420 x 297 mm
     inline size page_dimensions(const page_size paper, const orientation turned = orientation::portrait) {
         using dist::inch;
         using dist::mm;

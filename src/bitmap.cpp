@@ -9,7 +9,7 @@
 #include <optional>
 #include <stdexcept>
 
-namespace sc {
+namespace sc::graphics {
     namespace {
         constexpr std::string_view png_signature{"\x89PNG\r\n\x1a\n", 8};
 
@@ -80,23 +80,23 @@ namespace sc {
             type_ = format::jpeg;
             found = jpeg_size(bytes);
         } else {
-            throw std::runtime_error("sc::bitmap: not a PNG or JPEG image");
+            throw std::runtime_error("sc::graphics::bitmap: not a PNG or JPEG image");
         }
-        if (!found || found->width() <= 0 || found->height() <= 0) throw std::runtime_error("sc::bitmap: can't read the image's size");
+        if (!found || found->width() <= 0 || found->height() <= 0) throw std::runtime_error("sc::graphics::bitmap: can't read the image's size");
         size_ = *found;
         bytes_ = std::make_shared<const std::string>(std::move(bytes));
     }
 
     bitmap bitmap::load(const std::filesystem::path &file) {
         std::ifstream in{file, std::ios::binary};
-        if (!in) throw std::runtime_error("sc::bitmap: can't read " + file.string());
+        if (!in) throw std::runtime_error("sc::graphics::bitmap: can't read " + file.string());
         return bitmap{std::string{std::istreambuf_iterator<char>{in}, {}}};
     }
 
     bitmap bitmap::from_data_uri(const std::string_view uri) {
-        if (!uri.starts_with("data:")) throw std::runtime_error("sc::bitmap: not a data: URI");
+        if (!uri.starts_with("data:")) throw std::runtime_error("sc::graphics::bitmap: not a data: URI");
         const auto comma = uri.find(',');
-        if (comma == std::string_view::npos) throw std::runtime_error("sc::bitmap: a data: URI without data");
+        if (comma == std::string_view::npos) throw std::runtime_error("sc::graphics::bitmap: a data: URI without data");
         const auto header = uri.substr(5, comma - 5);
         const auto data = uri.substr(comma + 1);
         const bool base64 = header.ends_with(";base64");

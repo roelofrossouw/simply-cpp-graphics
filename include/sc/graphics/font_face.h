@@ -1,19 +1,19 @@
 #pragma once
 
 #include <memory>
-#include <sc/core/path.h>
-#include <sc/core/point.h>
+#include <sc/geometry/path.h>
+#include <sc/geometry/point.h>
 #include <string>
 #include <string_view>
 
-namespace sc {
+namespace sc::graphics {
     class typeface;
 
     /// One style of a typeface in one font file: DejaVu Sans Bold, in DejaVuSans-Bold.ttf. A
-    /// typeface's faces() lists them, its face() picks the closest; a font (sc::font) is a face at a
+    /// typeface's faces() lists them, its face() picks the closest; a font (sc::graphics::font) is a face at a
     /// size, and font.face() finds it.
     ///
-    ///     const auto face = sc::font{"DejaVu Sans", 11, 700}.face();
+    ///     const auto face = sc::graphics::font{"DejaVu Sans", 11, 700}.face();
     ///     face->typeface().name();      // "DejaVu Sans"
     ///     face->weight();               // 700, its own (the closest the typeface has)
     ///     face->width("Total due", 11); // at 11 points (or pixels): as sc-pdflite and sc-mupdf draw it
@@ -25,7 +25,7 @@ namespace sc {
     class font_face {
     public:
         /// The typeface (family) it's a style of.
-        [[nodiscard]] sc::typeface typeface() const;
+        [[nodiscard]] sc::graphics::typeface typeface() const;
 
         /// Its family's name, its style's name ("Bold Oblique"), CSS weight (100 thin to 900 black,
         /// 400 regular, 700 bold) and slant.

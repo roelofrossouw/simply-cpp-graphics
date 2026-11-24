@@ -8,7 +8,7 @@
 #include <utility>
 #include <variant>
 
-namespace sc {
+namespace sc::graphics {
     namespace {
         // The appearance as the primitives get it: a stroke or fill that wouldn't show as none.
         appearance shown(const appearance &look) {
@@ -16,7 +16,7 @@ namespace sc {
         }
     }
 
-    void canvas::draw_rounded_rect(const rounded_rect &shape, const sc::appearance &look) {
+    void canvas::draw_rounded_rect(const rounded_rect &shape, const sc::graphics::appearance &look) {
         if (!look.visible()) return;
         const rect box = shape.rect();
         const double radius = std::min(shape.radius(), std::min(box.width(), box.height()) / 2);
@@ -24,21 +24,21 @@ namespace sc {
         else draw_polygon(static_cast<polygon>(box), look);
     }
 
-    void canvas::draw_polygon(const polygon &shape, const sc::appearance &look) {
+    void canvas::draw_polygon(const polygon &shape, const sc::graphics::appearance &look) {
         if (shape.size() < 2 || !look.visible()) return;
         paint_polygon(shape, shown(look));
     }
 
-    void canvas::draw_circle(const circle &shape, const sc::appearance &look) {
+    void canvas::draw_circle(const circle &shape, const sc::graphics::appearance &look) {
         if (shape.radius() <= 0 || !look.visible()) return;
         paint_circle(shape, shown(look));
     }
 
-    void canvas::draw_line(const line &shape, const sc::stroke &stroke) {
+    void canvas::draw_line(const line &shape, const sc::graphics::stroke &stroke) {
         if (stroke.visible()) paint_line(shape, stroke);
     }
 
-    void canvas::draw(const text &sample, const sc::fill &fill) {
+    void canvas::draw(const text &sample, const sc::graphics::fill &fill) {
         if (sample.content.empty() || !fill.visible() || sample.font.size <= 0) return;
         const auto parts = detail::runs(sample.font, sample.content);
         if (parts.size() == 1 && !parts[0].fallback && !parts[0].colour) {
@@ -67,16 +67,16 @@ namespace sc {
         paint_bitmap(picture, figure::filling(position));
     }
 
-    void canvas::draw(const path &shape, const sc::appearance &look) {
+    void canvas::draw(const path &shape, const sc::graphics::appearance &look) {
         if (shape.empty() || !look.visible()) return;
         paint_path(shape, shown(look));
     }
 
-    void canvas::draw(const group &shapes, const sc::appearance &look) {
+    void canvas::draw(const group &shapes, const sc::graphics::appearance &look) {
         for (const auto &item: shapes) draw(item, look);
     }
 
-    void canvas::draw(const shape &held, const sc::appearance &look) {
+    void canvas::draw(const shape &held, const sc::graphics::appearance &look) {
         std::visit([&](const auto &each) {
             if constexpr (std::same_as<std::decay_t<decltype(each)>, line>) draw(each, look.stroke());
             else draw(each, look);
@@ -108,7 +108,7 @@ namespace sc {
         draw(fitted);
     }
 
-    void canvas::paint_path(const path &shape, const sc::appearance &look) {
+    void canvas::paint_path(const path &shape, const sc::graphics::appearance &look) {
         for (const auto &[points, closed]: shape.flattened()) {
             if (closed) {
                 paint_polygon(points, look);
@@ -146,7 +146,7 @@ namespace sc {
         return font.size > 0 ? measure_cap_height(font) : 0;
     }
 
-    void canvas::paint_rounded_rect(const rounded_rect &shape, const sc::appearance &look) {
+    void canvas::paint_rounded_rect(const rounded_rect &shape, const sc::graphics::appearance &look) {
         // Each corner a quarter circle of short segments, around clockwise (y down) from the top left.
         constexpr int segments = 8;
         const rect box = shape.rect();

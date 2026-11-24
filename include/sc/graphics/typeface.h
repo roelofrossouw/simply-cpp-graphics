@@ -7,18 +7,18 @@
 #include <string_view>
 #include <vector>
 
-namespace sc {
+namespace sc::graphics {
     /// A typeface, or font family: DejaVu Sans, Roboto, with every style installed of it (regular,
     /// bold, italic, thin, condensed, ...), usually across several files. Its faces are those styles;
     /// a face at a size is a font.
     ///
-    ///     if (const auto roboto = sc::typeface::find("Roboto")) {
+    ///     if (const auto roboto = sc::graphics::typeface::find("Roboto")) {
     ///         for (const auto &face: roboto->faces()) std::cout << face.style() << ' ' << face.weight() << '\n';
     ///         const auto bold = roboto->face(700);
     ///     }
     ///
     /// Found through fontconfig, and only its scalable fonts (TrueType, OpenType, Type 1). Generic
-    /// names ("sans-serif", "serif", "monospace") aren't typefaces: sc::font resolves them to one.
+    /// names ("sans-serif", "serif", "monospace") aren't typefaces: sc::graphics::font resolves them to one.
     class typeface {
     public:
         /// The installed typeface of that name (ignoring case); empty when there's none.

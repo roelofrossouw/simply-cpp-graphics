@@ -1,13 +1,13 @@
 #pragma once
 
 #include <sc/core/color.h>
-#include <sc/core/point.h>
-#include <sc/core/transform.h>
+#include <sc/geometry/point.h>
+#include <sc/geometry/transform.h>
 
 #include <optional>
 #include <vector>
 
-namespace sc {
+namespace sc::graphics {
     // Transparency is the colour's alpha, for strokes, fills and text alike: 0 leaves the part out.
     // sc-pdflite and sc-mupdf paint partly transparent colours as they are; sc-image paints them opaque.
 
@@ -18,7 +18,7 @@ namespace sc {
     /// How a shape's outline is painted: a colour and a width in the canvas's units, centred on the
     /// edge. A transparent colour or a width of 0 leaves it out.
     ///
-    ///     canvas.draw(box, sc::stroke{sc::color::Black, 0.5});
+    ///     canvas.draw(box, sc::graphics::stroke{sc::color::Black, 0.5});
     ///
     /// Planned (an engine that can't do one draws the plain outline): dashes, caps and joins, a nib,
     /// gradient and pattern paint.
@@ -51,8 +51,8 @@ namespace sc {
     /// A colour changing along a line, from (offset 0) to (offset 1), in the canvas's coordinates;
     /// along any line across it the colour is the same, and past the ends the end colours carry on.
     ///
-    ///     sc::linear_gradient green{{0, 100}, {0, 0}, {{0, sc::color{"#20b038"}}, {1, sc::color{"#60d66a"}}}};
-    ///     canvas.draw(bubble, sc::appearance::filled(green));
+    ///     sc::graphics::linear_gradient green{{0, 100}, {0, 0}, {{0, sc::color{"#20b038"}}, {1, sc::color{"#60d66a"}}}};
+    ///     canvas.draw(bubble, sc::graphics::appearance::filled(green));
     class linear_gradient {
     public:
         struct stop {
@@ -89,7 +89,7 @@ namespace sc {
     /// How a shape's inside is painted: a colour or a linear gradient, and a fill rule. None
     /// (transparent) by default.
     ///
-    ///     canvas.draw(ring, sc::appearance::filled(sc::fill{sc::color::Blue, sc::fill_rule::even_odd}));
+    ///     canvas.draw(ring, sc::graphics::appearance::filled(sc::graphics::fill{sc::color::Blue, sc::graphics::fill_rule::even_odd}));
     ///
     /// sc-image draws gradients; sc-pdflite and sc-mupdf fill with the gradient's middle colour for now.
     /// Planned: radial gradients, patterns and images (an engine that can't do one fills with the
@@ -137,8 +137,8 @@ namespace sc {
     ///
     ///     canvas.draw(box);                                                  // black outline
     ///     canvas.draw(box, sc::color::Red);                                  // red outline
-    ///     canvas.draw(box, {sc::stroke{sc::color::Black, 2}, sc::color{0.9, 0.95, 1}});   // outline, fill
-    ///     canvas.draw(dot, sc::appearance::filled(sc::color::Red));          // fill only
+    ///     canvas.draw(box, {sc::graphics::stroke{sc::color::Black, 2}, sc::color{0.9, 0.95, 1}});   // outline, fill
+    ///     canvas.draw(dot, sc::graphics::appearance::filled(sc::color::Red));          // fill only
     class appearance {
     public:
         appearance() = default;
@@ -147,26 +147,26 @@ namespace sc {
         appearance(const sc::color &outline) : stroke_(outline) {
         }
 
-        appearance(const sc::stroke &stroke, const sc::fill &fill = {}) : stroke_(stroke), fill_(fill) {
+        appearance(const sc::graphics::stroke &stroke, const sc::graphics::fill &fill = {}) : stroke_(stroke), fill_(fill) {
         }
 
         /// Only the inside: no outline.
-        static appearance filled(const sc::fill &fill) { return {sc::stroke::none(), fill}; }
+        static appearance filled(const sc::graphics::fill &fill) { return {sc::graphics::stroke::none(), fill}; }
 
-        static appearance none() { return {sc::stroke::none(), sc::fill::none()}; }
+        static appearance none() { return {sc::graphics::stroke::none(), sc::graphics::fill::none()}; }
 
-        [[nodiscard]] const sc::stroke &stroke() const { return stroke_; }
-        const sc::stroke &stroke(const sc::stroke &value) { return stroke_ = value; }
+        [[nodiscard]] const sc::graphics::stroke &stroke() const { return stroke_; }
+        const sc::graphics::stroke &stroke(const sc::graphics::stroke &value) { return stroke_ = value; }
 
-        [[nodiscard]] const sc::fill &fill() const { return fill_; }
-        const sc::fill &fill(const sc::fill &value) { return fill_ = value; }
+        [[nodiscard]] const sc::graphics::fill &fill() const { return fill_; }
+        const sc::graphics::fill &fill(const sc::graphics::fill &value) { return fill_ = value; }
 
         [[nodiscard]] bool visible() const { return stroke_.visible() || fill_.visible(); }
 
         bool operator==(const appearance &) const = default;
 
     private:
-        sc::stroke stroke_;
-        sc::fill fill_;
+        sc::graphics::stroke stroke_;
+        sc::graphics::fill fill_;
     };
 }

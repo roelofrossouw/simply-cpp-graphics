@@ -1,18 +1,18 @@
 #pragma once
 
-#include <sc/core/size.h>
+#include <sc/geometry/size.h>
 
 #include <filesystem>
 #include <memory>
 #include <string>
 #include <string_view>
 
-namespace sc {
+namespace sc::graphics {
     /// A raster image as its encoded file, PNG or JPEG, to draw on any canvas: PDFs embed it as it
-    /// is, an sc::image decodes it, an sc::drawing keeps it (and SVG holds it as a data: URI).
+    /// is, an sc::image::picture decodes it, an sc::graphics::drawing keeps it (and SVG holds it as a data: URI).
     /// Copies share the bytes.
     ///
-    ///     const auto logo = sc::bitmap::load("logo.png");
+    ///     const auto logo = sc::graphics::bitmap::load("logo.png");
     ///     canvas.draw(logo, sc::rect{10, 10, 120, 40});
     class bitmap {
     public:
