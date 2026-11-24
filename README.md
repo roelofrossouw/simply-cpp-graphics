@@ -129,7 +129,11 @@ const auto face = body.face();          // DejaVu Serif Book on Ubuntu: its file
 face->typeface().faces();               // every style of the family: Bold, Italic, Condensed, ...
 face->typeface().face(700);             // the closest to bold
 sc::graphics::typeface::installed();              // every family on the machine
+sc::graphics::typeface::add_folder("/srv/fonts"); // fonts kept with an application, for this process only
 ```
+
+`typeface::add_folder()` adds a folder's fonts to those found, as if installed (fontconfig's
+application fonts): call it before anything looks a font up.
 
 ### PDF's built-in fonts
 

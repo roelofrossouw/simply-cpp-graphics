@@ -2,6 +2,7 @@
 
 #include <sc/graphics/font_face.h>
 
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -26,6 +27,12 @@ namespace sc::graphics {
 
         /// Every installed typeface, by name.
         [[nodiscard]] static std::vector<typeface> installed();
+
+        /// Adds the fonts in a folder (and its subfolders) to those found, for this process only,
+        /// as if they were installed: fonts kept with an application (Arial's TTFs on a share, say).
+        /// Call it before any font is looked up, as lookups are kept. False when the folder isn't
+        /// one or fontconfig can't read it.
+        static bool add_folder(const std::filesystem::path &folder);
 
         [[nodiscard]] const std::string &name() const { return name_; }
 

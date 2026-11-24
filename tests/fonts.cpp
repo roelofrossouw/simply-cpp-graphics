@@ -5,6 +5,7 @@
 #include "sc_test.h"
 
 #include <cctype>
+#include <filesystem>
 #include <string>
 
 int main() {
@@ -85,6 +86,18 @@ int main() {
     {
         CHECK(face->covers("Hello, world\n"));
         CHECK(!face->covers("\xF4\x8F\xBF\xBF")); // U+10FFFF: no font has it
+    }
+
+    SECTION("A folder of fonts added for this process");
+    {
+        CHECK(!sc::graphics::typeface::add_folder("/no/such/folder"));
+        const auto folder = std::filesystem::temp_directory_path() / "sc-graphics-fonts-test";
+        std::filesystem::create_directories(folder);
+        std::filesystem::copy_file(face->file(), folder / std::filesystem::path{face->file()}.filename(),
+                                   std::filesystem::copy_options::overwrite_existing);
+        CHECK(sc::graphics::typeface::add_folder(folder));
+        CHECK(sc::graphics::typeface::find(face->family()).has_value()); // still found, from either copy
+        std::filesystem::remove_all(folder);
     }
 
     TEST_SUMMARY();

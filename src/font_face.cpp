@@ -361,6 +361,12 @@ namespace sc::graphics {
         return typeface{found};
     }
 
+    bool typeface::add_folder(const std::filesystem::path &folder) {
+        std::error_code error;
+        if (!fontconfig_ready() || !std::filesystem::is_directory(folder, error)) return false;
+        return FcConfigAppFontAddDir(nullptr, fc_text(folder.string())) == FcTrue;
+    }
+
     std::vector<typeface> typeface::installed() {
         std::map<std::string, std::string> names; // by lowercase name, so each is listed once
         list({}, [&](FcPattern *font) {
