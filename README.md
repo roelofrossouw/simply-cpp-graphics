@@ -15,7 +15,7 @@ so the same calls draw on any of them.
 
 ## Drawing
 
-Shapes are sc-core's geometry (`rect`, `rounded_rect`, `rotated_rect`,
+Shapes are sc-geometry's (`rect`, `rounded_rect`, `rotated_rect`,
 `polygon`, `circle`, `line`, as double or int, and `path`). Any other
 `sc::geometry` draws through its path, an `sc::shape` as the shape it holds,
 and an `sc::group` shape by shape. Coordinates are the canvas's own, from the
@@ -245,7 +245,7 @@ private:
 ## Building locally
 
 Run `bash scripts/install.sh` to configure, build, test, package, and install.
-Depends on sc-core, sc-web (reading SVG as XML, on libxml2), fontconfig and FreeType.
+Depends on sc-core, sc-geometry (the shapes), sc-web (reading SVG as XML, on libxml2), fontconfig, FreeType and HarfBuzz.
 
 ## Usage
 
